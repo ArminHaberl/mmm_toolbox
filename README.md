@@ -41,16 +41,25 @@ Dependencies: `numpy`, `scipy`, `matplotlib`, `pytest`.
 
 ### Data files
 
-The library requires two precomputed data files, included in the original
-[MMM Toolbox](https://github.com/bkolbrek/MMM_toolbox):
+The library requires two precomputed data files:
 
 | File | Purpose |
 |------|---------|
 | `MMM_besselzeros.mat` | Zeros of Bessel function J₁ (axisymmetric eigenvalues) |
 | `ZradAS32.mat` | Precomputed modal radiation impedance lookup table (32 modes) |
 
+These are included in the original [MMM Toolbox](https://github.com/bkolbrek/MMM_toolbox).
 Place them in a `matlab/` directory at the project root, or pass explicit paths
 to `init_horn_data` and `baffled_rad_zmatrix_axi`.
+
+You can also generate `ZradAS{N}.mat` from scratch:
+
+```bash
+uv run python precompute.py          # generates ZradAS32.mat (~5-15 min)
+```
+
+Or programmatically: `precompute_rad_zmatrix(max_modes=N)`. This performs direct numerical
+integration and may take several minutes for large N.
 
 ---
 
@@ -92,6 +101,8 @@ below for key fields. For a complete runnable example, see
 | `make_big_fmat(N, coords, mode_info, f)` | `MMM_makebigfmat` | Assemble F matrices for all junctions |
 | `calculate_matrices(data, ...)` | `MMM_calculateMatrices` | Propagate impedances mouth→throat |
 | `baffled_rad_zmatrix_axi(k, ρ, c, S, M, file)` | `MMM_ASbaffledradzmatrixIntp` | Modal radiation impedance (interpolated) |
+| `baffled_rad_zmatrix_direct_axi(k, ρ, c, S, M, bz)` | `MMM_ASbaffledradzmatrix` | Modal radiation impedance (direct integration) |
+| `precompute_rad_zmatrix(M, ...)` | `MMM_ASbaffledradzmatrixPrecompute` | Generate a `ZradAS{N}.mat` lookup table |
 | `radiated_pressure_axi(data, pts, ...)` | `MMM_ASradiatedPressure` | Far-field modal radiated pressure |
 | `get_di_axi(data, angles)` | `MMM_ASgetDI` | Directivity index |
 
@@ -134,7 +145,8 @@ for interpolation, `1e-8` for far-field pressure.
 - Stepped duct discretization
 - Mode-matching F-matrix assembly
 - Core impedance propagation (mouth → throat)
-- Interpolation-based modal radiation impedance (fundamental + 7 higher modes)
+- Interpolation-based and direct-integration modal radiation impedance
+- Lookup table precomputation via `precompute_rad_zmatrix`
 - Far-field modal radiated pressure
 - Directivity index (Beranek / Gerzon weighting)
 
@@ -142,7 +154,6 @@ for interpolation, `1e-8` for far-field pressure.
 
 - `MMM_ASpressureDistribution` — internal / near-field pressure field
 - Rayleigh integral near-field branch of `radiated_pressure_axi`
-- Direct numerical integration radiation impedance (`MMM_ASbaffledradzmatrix`)
 - MATLAB plotting utilities (`MMM_PlotZth`, `MMM_ASplotHorn`, `MMM_ASpolarMap`)
 - Rectangular horn geometry (requires sourcing missing `MMM_RE*` source files
   from the original MMM Toolbox)
