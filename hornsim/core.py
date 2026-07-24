@@ -9,8 +9,8 @@ MATLAB originals:
 import numpy as np
 from scipy.io import loadmat
 
-from hornsim.geometry import make_steps
 from hornsim.axi import make_fmat_axi
+from hornsim.geometry import make_steps
 
 
 def make_big_fmat(
@@ -146,7 +146,7 @@ def calculate_matrices(data: dict, progress_report: bool = False) -> dict:
         # Propagate backward from mouth to throat
         for iz in range(n_steps - 2, -1, -1):
             c1 = stepped_coords[iz, :]
-            c2 = stepped_coords[iz + 1, :]
+            stepped_coords[iz + 1, :]
             L = stepped_coords[iz + 1, 0] - stepped_coords[iz, 0]
 
             if L > 0.0:

@@ -1,6 +1,7 @@
 """Test MMM_ASgetDI — directivity index calculation."""
 
 import numpy as np
+
 from hornsim.plotting import get_di_axi
 
 

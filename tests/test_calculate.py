@@ -1,6 +1,7 @@
 """Test MMM_calculateMatrices — core impedance propagation algorithm."""
 
 import numpy as np
+
 from hornsim.core import calculate_matrices
 
 

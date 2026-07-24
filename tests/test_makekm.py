@@ -1,6 +1,7 @@
 """Test MMM_ASmakekm — modal wavenumber computation."""
 
 import numpy as np
+
 from hornsim.axi import make_km_axi
 
 

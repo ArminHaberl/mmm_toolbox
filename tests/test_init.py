@@ -1,7 +1,8 @@
 """Test MMM_init — data structure initialization (includes makesteps + bigfmat)."""
 
-import pytest
 import numpy as np
+import pytest
+
 from hornsim.core import init_horn_data
 
 

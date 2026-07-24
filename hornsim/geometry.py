@@ -232,7 +232,7 @@ def horn_coord_1d(
             zL = rad_r * np.sin(rad_fta * np.pi / 180.0)
             L = z0 + zL
             N = int(np.ceil(L / dz))
-            dz = L / N  # noqa: F841
+            dz = L / N
             horncoord = np.zeros((N, 2))
             horncoord[:, 0] = np.linspace(0, L, N)
             theta = np.real(np.arcsin((horncoord[:, 0] - z0) / rad_r))

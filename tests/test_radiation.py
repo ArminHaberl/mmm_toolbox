@@ -1,7 +1,9 @@
 """Test MMM_ASbaffledradzmatrixIntp — modal radiation impedance matrix."""
 
 from pathlib import Path
+
 import numpy as np
+
 from hornsim.radiation import baffled_rad_zmatrix_axi
 
 MATLAB_DIR = Path(__file__).parent.parent / "matlab"

@@ -5,11 +5,13 @@ Validates Z00 (throat impedance) — the primary engineering output.
 """
 
 from pathlib import Path
+
 import numpy as np
+
+from hornsim.core import calculate_matrices, init_horn_data
 from hornsim.geometry import horn_coord_1d
-from hornsim.core import init_horn_data, calculate_matrices
-from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 from hornsim.plotting import get_di_axi
+from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
 MATLAB_DIR = Path(__file__).parent.parent / "matlab"
 

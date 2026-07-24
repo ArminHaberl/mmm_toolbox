@@ -1,9 +1,10 @@
 """Shared fixtures for hornsim tests — load MATLAB-generated reference data."""
 
+from pathlib import Path
+
+import numpy as np
 import pytest
 import scipy.io
-import numpy as np
-from pathlib import Path
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 MATLAB_DIR = Path(__file__).parent.parent / "matlab"

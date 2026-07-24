@@ -1,6 +1,7 @@
 """Test MMM_1Dhorncoord — horn contour generation."""
 
 import numpy as np
+
 from hornsim.geometry import horn_coord_1d
 
 

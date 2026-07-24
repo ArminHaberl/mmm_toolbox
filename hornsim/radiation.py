@@ -6,11 +6,9 @@ MATLAB originals:
 """
 
 import numpy as np
+from scipy.interpolate import CubicSpline
 from scipy.io import loadmat
 from scipy.special import j0, j1
-from scipy.interpolate import CubicSpline
-
-from hornsim.axi import get_eigenfunctions_axi
 
 
 def _struve_h1(x: np.ndarray) -> np.ndarray:
