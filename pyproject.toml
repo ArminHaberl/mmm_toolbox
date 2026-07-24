@@ -25,3 +25,9 @@ include = ["hornsim*"]
 
 [tool.setuptools.package-data]
 hornsim = ["data/*.mat"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+    "ty>=0.0.63",
+]
