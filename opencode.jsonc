@@ -1,0 +1,26 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "lsp": {
+        "pyright": {
+            "disabled": true
+        },
+        "ty": {
+            "command": [
+                "uv run --with ty ty server"
+            ],
+            "extensions": [
+                ".py",
+                ".pyi"
+            ]
+        },
+        "ruff": {
+            "command": [
+                "uv run --with ruff ruff server"
+            ],
+            "extensions": [
+                ".py",
+                ".pyi"
+            ]
+        }
+    }
+}
