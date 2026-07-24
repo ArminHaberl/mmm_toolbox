@@ -325,7 +325,7 @@ def _get_spherical_vir_length(y0: float, kc: float, Lphys: float) -> float:
     Xvir_min = Lphys
     Xvir_max = 1.0 / m * np.log(1.0 / (m * h0))
     Xhmax = Xvir_max + h0 * (1.0 - np.exp(m * Xvir_max))
-    if max(Lphys) > Xhmax:  # type: ignore[arg-type]
+    if Lphys > Xhmax:
         return Xvir_max
 
     diff = 1.0
