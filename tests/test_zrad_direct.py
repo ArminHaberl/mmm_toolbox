@@ -15,11 +15,11 @@ from hornsim.radiation import (
     _struve_h1,
 )
 
-MATLAB_DIR = Path(__file__).parent.parent / "matlab"
+DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
 
 
 def _load_bz():
-    d = scipy.io.loadmat(str(MATLAB_DIR / "MMM_besselzeros.mat"))
+    d = scipy.io.loadmat(str(DATA_DIR / "MMM_besselzeros.mat"))
     return d["bz"].flatten()
 
 
@@ -69,7 +69,7 @@ def test_direct_agrees_with_interpolation():
 
     Zmat_intp = baffled_rad_zmatrix_axi(
         k, 1.0, 1.0, 1.0, max_modes,
-        str(MATLAB_DIR / "ZradAS32.mat"),
+        str(DATA_DIR / "ZradAS32.mat"),
     )
 
     np.testing.assert_allclose(
@@ -86,7 +86,7 @@ def test_precompute_small():
         out = Path(tmpdir) / "ZradAS5_test.mat"
         result_path = precompute_rad_zmatrix(
             max_modes=max_modes,
-            bessel_zeros_path=str(MATLAB_DIR / "MMM_besselzeros.mat"),
+            bessel_zeros_path=str(DATA_DIR / "MMM_besselzeros.mat"),
             output_path=str(out),
             progress_report=False,
         )

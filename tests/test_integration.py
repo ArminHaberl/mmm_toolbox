@@ -13,7 +13,7 @@ from hornsim.geometry import horn_coord_1d
 from hornsim.plotting import get_di_axi
 from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-MATLAB_DIR = Path(__file__).parent.parent / "matlab"
+DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
 
 
 def test_full_pipeline(
@@ -43,7 +43,7 @@ def test_full_pipeline(
     expected_z00 = calculate_mat["Z00"].flatten()
 
     # --- 3. Radiation impedance ---
-    Zrad = baffled_rad_zmatrix_axi(data["k"], rho, c, data["Sm"], n_modes, str(MATLAB_DIR / "ZradAS32.mat"))
+    Zrad = baffled_rad_zmatrix_axi(data["k"], rho, c, data["Sm"], n_modes, str(DATA_DIR / "ZradAS32.mat"))
     data["Zrad"] = Zrad
     np.testing.assert_allclose(Zrad, zrad_mat["Zrad"], atol=1e-10)
 

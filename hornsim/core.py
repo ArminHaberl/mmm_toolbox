@@ -6,11 +6,15 @@ MATLAB originals:
   - MMM_calculateMatrices -> calculate_matrices
 """
 
+from pathlib import Path
+
 import numpy as np
 from scipy.io import loadmat
 
 from hornsim.axi import make_fmat_axi
 from hornsim.geometry import make_steps
+
+_DATA_DIR = Path(__file__).parent / "data"
 
 
 def make_big_fmat(
@@ -41,7 +45,7 @@ def init_horn_data(
     geometry: str,
     rho: float = 1.205,
     c: float = 344.0,
-    bessel_zeros_path: str = "matlab/MMM_besselzeros.mat",
+    bessel_zeros_path: str | None = None,
 ) -> dict:
     """Initialize the MMM data structure for a horn simulation.
 
@@ -52,6 +56,8 @@ def init_horn_data(
       n_integration_points, raw_coords, stepped_coords, mode_index,
       mode_info, S, Sm, St, big_f, Zrad
     """
+    if bessel_zeros_path is None:
+        bessel_zeros_path = str(_DATA_DIR / "MMM_besselzeros.mat")
     if coords.size == 0:
         raise ValueError("Error: no horn coordinates.")
     if np.any(np.diff(coords[:, 0]) < 0):

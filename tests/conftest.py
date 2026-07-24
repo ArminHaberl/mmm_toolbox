@@ -7,13 +7,13 @@ import pytest
 import scipy.io
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
-MATLAB_DIR = Path(__file__).parent.parent / "matlab"
+DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
 
 
 @pytest.fixture(scope="session")
 def bessel_zeros():
     """Full array of Bessel J1 zeros from MMM_besselzeros.mat."""
-    d = scipy.io.loadmat(str(MATLAB_DIR / "MMM_besselzeros.mat"))
+    d = scipy.io.loadmat(str(DATA_DIR / "MMM_besselzeros.mat"))
     return d["bz"].flatten()
 
 

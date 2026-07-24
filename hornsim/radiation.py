@@ -16,6 +16,8 @@ from scipy.interpolate import CubicSpline
 from scipy.io import loadmat, savemat
 from scipy.special import j0, j1
 
+_DATA_DIR = Path(__file__).parent / "data"
+
 
 def _struve_h1(x: np.ndarray) -> np.ndarray:
     """Struve function H1(x) — MathWorld approximation (matches MATLAB)."""
@@ -215,7 +217,7 @@ def baffled_rad_zmatrix_direct_axi(
 
 def precompute_rad_zmatrix(
     max_modes: int = 32,
-    bessel_zeros_path: str = "matlab/MMM_besselzeros.mat",
+    bessel_zeros_path: str | None = None,
     output_path: str | None = None,
     progress_report: bool = True,
 ) -> str:
@@ -233,11 +235,12 @@ def precompute_rad_zmatrix(
     ----------
     max_modes : int
         Number of modes to precompute (default 32).
-    bessel_zeros_path : str
-        Path to MMM_besselzeros.mat.
+    bessel_zeros_path : str or None
+        Path to MMM_besselzeros.mat. Defaults to the file bundled
+        with the package.
     output_path : str or None
         Output .mat file path. Defaults to
-        ``matlab/ZradAS{max_modes}.mat``.
+        ``ZradAS{max_modes}.mat`` in the current directory.
     progress_report : bool
         Print progress.
 
@@ -246,11 +249,14 @@ def precompute_rad_zmatrix(
     output_path : str
         Path to the saved file.
     """
+    if bessel_zeros_path is None:
+        bessel_zeros_path = str(_DATA_DIR / "MMM_besselzeros.mat")
+
     bz_mat = loadmat(bessel_zeros_path)
     bz = bz_mat["bz"].flatten()
 
     if output_path is None:
-        output_path = f"matlab/ZradAS{max_modes}.mat"
+        output_path = f"ZradAS{max_modes}.mat"
 
     kamax = bz[max_modes - 1] * 2.5
     kamin = 0.1
@@ -308,8 +314,8 @@ def baffled_rad_zmatrix_axi(
             f"precalculated ({available_modes})"
         )
 
-    # Load Bessel zeros from the same directory as the Zrad file
-    bz_mat = loadmat("matlab/MMM_besselzeros.mat")
+    # Load Bessel zeros bundled with the package
+    bz_mat = loadmat(str(_DATA_DIR / "MMM_besselzeros.mat"))
     bz = bz_mat["bz"].flatten()
 
     a = np.sqrt(S / np.pi)
