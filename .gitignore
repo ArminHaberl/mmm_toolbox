@@ -1,3 +1,4 @@
 __pycache__
 hornsim.egg-info
 .venv
+.pytest_cache
