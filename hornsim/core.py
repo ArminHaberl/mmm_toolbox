@@ -16,6 +16,7 @@ def init_horn_data(
     geometry: str,
     rho: float = 1.205,
     c: float = 344.0,
+    bessel_zeros_path: str = "matlab/MMM_besselzeros.mat",
 ) -> dict:
     """Initialize the MMM data structure for a horn simulation.
 
