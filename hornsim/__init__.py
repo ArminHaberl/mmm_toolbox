@@ -4,10 +4,16 @@ from hornsim.axi import get_eigenfunctions_axi, make_fmat_axi, make_km_axi
 from hornsim.core import calculate_matrices, init_horn_data, make_big_fmat
 from hornsim.geometry import horn_coord_1d, make_steps
 from hornsim.plotting import get_di_axi
-from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
+from hornsim.radiation import (
+    baffled_rad_zmatrix_axi,
+    baffled_rad_zmatrix_direct_axi,
+    precompute_rad_zmatrix,
+    radiated_pressure_axi,
+)
 
 __all__ = [
     "baffled_rad_zmatrix_axi",
+    "baffled_rad_zmatrix_direct_axi",
     "calculate_matrices",
     "get_di_axi",
     "get_eigenfunctions_axi",
@@ -17,5 +23,6 @@ __all__ = [
     "make_fmat_axi",
     "make_km_axi",
     "make_steps",
+    "precompute_rad_zmatrix",
     "radiated_pressure_axi",
 ]
