@@ -9,5 +9,12 @@ dependencies = [
     "pytest>=9.1.1",
     "scipy>=1.18.0",
 ]
-license = "GPL-2"
+license = "GPL-2.0-or-later"
 license-files = ["LICENSE.txt"]
+
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["hornsim*"]
