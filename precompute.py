@@ -10,4 +10,4 @@ depending on your CPU.
 from hornsim.radiation import precompute_rad_zmatrix
 
 if __name__ == "__main__":
-    precompute_rad_zmatrix(max_modes=2)
+    precompute_rad_zmatrix(max_modes=32)
