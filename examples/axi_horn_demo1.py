@@ -123,7 +123,7 @@ data = radiated_pressure_axi(
 # -----------------------------------------------------------------------
 #  6.  Visualisation  (requires matplotlib)
 # -----------------------------------------------------------------------
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 # -- Figure 1: Horn profile -------------------------------------------
 fig1, ax1 = plt.subplots(figsize=(8, 5))

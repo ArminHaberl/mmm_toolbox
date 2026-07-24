@@ -36,7 +36,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from scipy.io import loadmat
 
 from hornsim.axi import get_eigenfunctions_axi, make_km_axi
 from hornsim.core import calculate_matrices, init_horn_data
@@ -143,7 +142,7 @@ Pmat[:, ip] = data["BigZ"][:, :, 0, ik] @ U0
 Pmatx[:, ip] = phi @ Pmat[:, ip]
 
 U = U0.copy()
-for iz in range(0, Nz - 1):
+for iz in range(Nz - 1):
     R1 = stepped_coords[iz, 1]
     R2 = stepped_coords[iz + 1, 1]
     L = stepped_coords[iz + 1, 0] - stepped_coords[iz, 0]
@@ -192,7 +191,7 @@ if add_nearfield:
 # -----------------------------------------------------------------------
 #  6.  Visualisation  (requires matplotlib)
 # -----------------------------------------------------------------------
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 # Figure 1: Horn profile
 fig1, ax1 = plt.subplots(figsize=(8, 5))

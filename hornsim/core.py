@@ -58,6 +58,7 @@ def init_horn_data(
     """
     if bessel_zeros_path is None:
         bessel_zeros_path = str(_DATA_DIR / "MMM_besselzeros.mat")
+
     if coords.size == 0:
         raise ValueError("Error: no horn coordinates.")
     if np.any(np.diff(coords[:, 0]) < 0):
@@ -68,7 +69,21 @@ def init_horn_data(
     k = fvec * 2.0 * np.pi / c
     stepped_coords = make_steps(coords)
 
-    data = {
+    S: np.ndarray
+    eigen_values: np.ndarray
+
+    if "axi" in geometry:
+        bz_mat = loadmat(bessel_zeros_path)
+        bz = bz_mat["bz"].flatten()
+        eigen_values = bz[:n_modes]
+        S = np.pi * stepped_coords[:, 1] ** 2
+    elif "rect" in geometry:
+        S = stepped_coords[:, 1] * stepped_coords[:, 2] * 4.0
+        eigen_values = np.array([])
+    else:
+        raise ValueError(f"Unknown geometry type: {geometry}")
+
+    data: dict = {
         "geometry": geometry,
         "rho": rho,
         "c": c,
@@ -81,32 +96,18 @@ def init_horn_data(
         "raw_coords": coords,
         "stepped_coords": stepped_coords,
         "mode_index": None,
+        "eigen_values": eigen_values,
+        "S": S,
+        "mode_info": eigen_values,
+        "Sm": S[-1],
+        "St": S[0],
+        "big_f": make_big_fmat(
+            n_modes, stepped_coords, eigen_values, make_fmat_axi
+        ),
+        "Zrad": None,
     }
 
-    if "axi" in geometry:
-        bz_mat = loadmat(bessel_zeros_path)
-        bz = bz_mat["bz"].flatten()
-        eigen_values = bz[:n_modes]
-        data["eigen_values"] = eigen_values
-        data["S"] = np.pi * stepped_coords[:, 1] ** 2
-        data["mode_info"] = eigen_values
-    elif "rect" in geometry:
-        data["S"] = stepped_coords[:, 1] * stepped_coords[:, 2] * 4.0
-        data["eigen_values"] = np.array([])
-        data["mode_index"] = None
-        data["mode_info"] = np.array([])
-    else:
-        raise ValueError(f"Unknown geometry type: {geometry}")
-
-    data["Sm"] = data["S"][-1]
-    data["St"] = data["S"][0]
-    data["big_f"] = make_big_fmat(
-        n_modes, stepped_coords, data["mode_info"], make_fmat_axi
-    )
-    data["Zrad"] = None
-
     return data
-
 
 def calculate_matrices(data: dict, progress_report: bool = False) -> dict:
     """Propagate modal impedances and volume velocities mouth-to-throat.

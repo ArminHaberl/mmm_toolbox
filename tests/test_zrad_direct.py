@@ -9,10 +9,10 @@ import scipy.io
 from scipy.special import j1 as besselj1
 
 from hornsim.radiation import (
+    _struve_h1,
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
     precompute_rad_zmatrix,
-    _struve_h1,
 )
 
 DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
@@ -79,7 +79,6 @@ def test_direct_agrees_with_interpolation():
 
 def test_precompute_small():
     """Precompute a small lookup table and verify structure."""
-    bz = _load_bz()
     max_modes = 5
 
     with tempfile.TemporaryDirectory() as tmpdir:
