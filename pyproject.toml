@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "A python implementation of the MMM toolbox by Bjørn Kolbrek."
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [
+    {name = "Armin Haberl"},
+]
 dependencies = [
     "matplotlib>=3.11.1",
     "numpy>=2.5.1",
