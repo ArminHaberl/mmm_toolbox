@@ -20,6 +20,7 @@ def test_init(init_mat, horncoords_mat):
     assert data["n_modes"] == 8
     assert data["nfreq"] == 200
 
+    np.testing.assert_allclose(data["raw_coords"], horncoords, atol=1e-12)
     np.testing.assert_allclose(data["stepped_coords"], init_mat["steppedCoords"], atol=1e-12)
     np.testing.assert_allclose(data["eigen_values"], init_mat["eigenValues"].flatten(), atol=1e-12)
     np.testing.assert_allclose(data["big_f"], init_mat["bigF"], atol=1e-12)

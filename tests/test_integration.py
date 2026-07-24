@@ -4,11 +4,14 @@ Replicates AxiHorndemo1 workflow: exponential horn, 8 modes, 100–15000 Hz.
 Validates Z00 (throat impedance) — the primary engineering output.
 """
 
+from pathlib import Path
 import numpy as np
 from hornsim.geometry import horn_coord_1d
 from hornsim.core import init_horn_data, calculate_matrices
 from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 from hornsim.plotting import get_di_axi
+
+MATLAB_DIR = Path(__file__).parent.parent / "matlab"
 
 
 def test_full_pipeline(
@@ -38,7 +41,7 @@ def test_full_pipeline(
     expected_z00 = calculate_mat["Z00"].flatten()
 
     # --- 3. Radiation impedance ---
-    Zrad = baffled_rad_zmatrix_axi(data["k"], rho, c, data["Sm"], n_modes, "ZradAS32.mat")
+    Zrad = baffled_rad_zmatrix_axi(data["k"], rho, c, data["Sm"], n_modes, str(MATLAB_DIR / "ZradAS32.mat"))
     data["Zrad"] = Zrad
     np.testing.assert_allclose(Zrad, zrad_mat["Zrad"], atol=1e-10)
 
