@@ -20,6 +20,7 @@ def test_calculate(calculate_mat, init_mat, zrad_mat):
         "rho": init_mat["rho"].item(),
         "c": init_mat["c"].item(),
         "S": init_mat["S"].flatten(),
+        "St": init_mat["S"].flatten()[0],
         "stepped_coords": init_mat["steppedCoords"],
         "mode_info": init_mat["eigenValues"].flatten(),
         "big_f": init_mat["bigF"],
