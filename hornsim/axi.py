@@ -7,6 +7,7 @@ MATLAB originals:
 """
 
 import numpy as np
+from scipy.special import j0, j1
 
 
 def make_fmat_axi(
@@ -32,7 +33,23 @@ def make_fmat_axi(
     F : (n_modes, n_modes) ndarray
         Mode coupling (scattering) matrix.
     """
-    raise NotImplementedError
+    R1 = coord1[1]
+    R2 = coord2[1]
+    beta = R1 / R2
+
+    if beta > 1.0:
+        beta = 1.0 / beta
+    elif beta == 1.0:
+        return np.eye(n_modes)
+
+    gamma_n = bz[:n_modes, np.newaxis]  # (N, 1) — gamma_n[i,j] = bz[i]
+    gamma_m = bz[np.newaxis, :n_modes]  # (1, N) — gamma_m[i,j] = bz[j]
+
+    Fm = 2.0 * beta * gamma_m * j1(beta * gamma_m) / j0(gamma_m)
+    F = Fm / (beta**2 * gamma_m**2 - gamma_n**2)
+
+    F[0, 0] = 1.0
+    return F
 
 
 def make_km_axi(
@@ -58,7 +75,11 @@ def make_km_axi(
     km : (n_modes,) ndarray
         Modal wavenumbers (complex for evanescent modes).
     """
-    raise NotImplementedError
+    R = coord[1]
+    gmR = bz[:n_modes] / R
+    delta = k**2 - gmR**2
+    km = np.conj(np.sqrt(delta + 0j))
+    return km
 
 
 def get_eigenfunctions_axi(
@@ -87,4 +108,12 @@ def get_eigenfunctions_axi(
     phi : (Nr, n_modes) ndarray
         Eigenfunction values.
     """
-    raise NotImplementedError
+    alpha = eigen_values / radius  # (n_modes,)
+    arg = alpha[:, np.newaxis] * rcoords[np.newaxis, :]  # (n_modes, Nr)
+    phi = j0(arg).T  # (Nr, n_modes)
+
+    if normalize:
+        norm = j0(eigen_values)  # (n_modes,)
+        phi = phi / norm[np.newaxis, :]
+
+    return phi
