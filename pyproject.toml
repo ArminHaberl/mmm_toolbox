@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "A python implementation of the MMM toolbox by Bjørn Kolbrek."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=2.5.1",
+    "scipy>=1.18.0",
+]
 license = "GPL-2"
 license-files = ["LICENSE.txt"]
