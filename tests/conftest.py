@@ -80,6 +80,26 @@ def eigenfunctions_mat():
     return _load("eigenfunctions.mat")
 
 
+@pytest.fixture(scope="session")
+def prad_rayleigh_mat():
+    return _load("prad_rayleigh.mat")
+
+
+@pytest.fixture(scope="session")
+def pressure_dist_mat():
+    return _load("pressure_dist.mat")
+
+
+@pytest.fixture(scope="session")
+def pressure_dist_nf_mat():
+    return _load("pressure_dist_nearfield.mat")
+
+
+@pytest.fixture(scope="session")
+def di_gerzon_mat():
+    return _load("di_gerzon.mat")
+
+
 # ---------------------------------------------------------------------------
 # Convenience helpers
 # ---------------------------------------------------------------------------
