@@ -42,8 +42,7 @@ def _compute_zmat_fixed_quad(
     bz: np.ndarray,
     max_modes: int,
     use_hf_approx: bool,
-    n_quad_r: int = 500,
-    n_quad_x: int = 500,
+    n_quad: int = 500,
     progress_report: bool = False,
 ) -> np.ndarray:
     """Compute entire Zmat via fixed Gauss-Legendre quadrature + broadcasting.
@@ -63,11 +62,11 @@ def _compute_zmat_fixed_quad(
     bz_div_kR_sq = (bz[:M, np.newaxis] / kR[np.newaxis, :]) ** 2
 
     # ---- Resistance: phi in [0, pi/2] ----
-    nodes, weights = roots_legendre(n_quad_r)
+    nodes, weights = roots_legendre(n_quad)
     t = 0.5 * (nodes + 1.0) * (np.pi / 2.0)
     w = weights * (np.pi / 4.0)
 
-    for idx in range(n_quad_r):
+    for idx in range(n_quad):
         sinphi = np.sin(t[idx])
         tau = sinphi
         if tau == 0.0:
@@ -86,17 +85,17 @@ def _compute_zmat_fixed_quad(
         Zmat.real += w[idx] * sinphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
 
         if progress_report and (idx + 1) % 100 == 0:
-            pct = 100.0 * (idx + 1) / n_quad_r
+            pct = 100.0 * (idx + 1) / n_quad
             print(f"  Resistance quadrature: {pct:.0f}%")
 
     Zmat.real[0, 0, :] = R00
 
     # ---- Reactance: phi in [0, 10] ----
-    nodes_x, weights_x = roots_legendre(n_quad_x)
+    nodes_x, weights_x = roots_legendre(n_quad)
     t_x = 0.5 * (nodes_x + 1.0) * 10.0
     w_x = weights_x * 5.0
 
-    for idx in range(n_quad_x):
+    for idx in range(n_quad):
         coshphi = np.cosh(t_x[idx])
         tau = coshphi
 
@@ -113,7 +112,7 @@ def _compute_zmat_fixed_quad(
         Zmat.imag += w_x[idx] * coshphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
 
         if progress_report and (idx + 1) % 100 == 0:
-            pct = 100.0 * (idx + 1) / n_quad_x
+            pct = 100.0 * (idx + 1) / n_quad
             print(f"  Reactance quadrature: {pct:.0f}%")
 
     Zmat.imag[0, 0, :] = X00
@@ -207,7 +206,7 @@ def baffled_rad_zmatrix_direct_axi(
     t_start = time.perf_counter()
     Zmat = _compute_zmat_fixed_quad(
         k, kR, a, bz, max_modes, use_hf_approx,
-        n_quad_r=n_quad, n_quad_x=n_quad,
+        n_quad=n_quad,
         progress_report=progress_report,
     )
     elapsed = time.perf_counter() - t_start
@@ -242,7 +241,7 @@ def _build_lookup_table(
 
     Zmat = _compute_zmat_fixed_quad(
         k, kR, a, bz, max_modes, use_hf_approx=True,
-        n_quad_r=n_quad, n_quad_x=n_quad,
+        n_quad=n_quad,
     )
     return ka, Zmat
 
