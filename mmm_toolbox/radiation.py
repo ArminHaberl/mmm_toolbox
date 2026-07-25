@@ -246,14 +246,26 @@ def _build_lookup_table(
 def _get_lookup_table(
     max_modes: int, n_quad: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return (ka, Zmat) from disk cache, or build + cache if missing."""
+    """Return (ka, Zmat) from disk cache, or build + cache if missing.
+
+    Scans for any cached table with at least *max_modes* and matching
+    *n_quad* before building a new one, so that an 8-mode request
+    reuses an existing 32-mode table instead of building from scratch.
+    """
     cache_dir = Path.home() / ".cache" / "mmm_toolbox"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f"ZradAS{max_modes}_q{n_quad}.mat"
 
-    if cache_file.exists():
-        data = loadmat(str(cache_file))
-        return data["ka"].flatten(), data["Zmat"]
+    # Reuse any cached table with >= max_modes and matching n_quad
+    for cf in sorted(cache_dir.glob(f"ZradAS*_q{n_quad}.mat")):
+        try:
+            cached = int(cf.stem.split("_")[0].removeprefix("ZradAS"))
+        except (ValueError, IndexError):
+            continue
+        if cached >= max_modes:
+            data = loadmat(str(cf))
+            return data["ka"].flatten(), data["Zmat"]
+
+    cache_file = cache_dir / f"ZradAS{max_modes}_q{n_quad}.mat"
 
     print(
         f"Building radiation-impedance lookup table ({max_modes} modes, "
