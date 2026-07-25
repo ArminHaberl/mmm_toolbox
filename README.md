@@ -41,24 +41,18 @@ Dependencies: `numpy`, `scipy`, `matplotlib`, `pytest`.
 
 ### Data files
 
-The library requires two precomputed data files:
+One data file is bundled with the package:
 
 | File | Purpose |
 |------|---------|
 | `MMM_besselzeros.mat` | Zeros of Bessel function J₁ (axisymmetric eigenvalues) |
-| `ZradAS32.mat` | Precomputed modal radiation impedance lookup table (32 modes) |
 
-These are bundled with the package in `mmm_toolbox/data/`. They are also included
-in the original [MMM Toolbox](https://github.com/bkolbrek/MMM_toolbox).
-Pass explicit paths to `init_horn_data` and `baffled_rad_zmatrix_axi`
-if you need to use custom files.
-
-```bash
-uv run python precompute.py          # generates ZradAS32.mat (~5-15 min)
-```
-
-Or programmatically: `precompute_rad_zmatrix(max_modes=N)`. This performs direct numerical
-integration and may take several minutes for large N.
+The modal radiation impedance lookup table is **built automatically** on the
+first call to `baffled_rad_zmatrix_axi` and cached to disk at
+`~/.cache/mmm_toolbox/ZradAS{N}_q{n}.mat`.  This takes ~6 seconds for 32 modes
+and is instant on all subsequent runs.  Pass `filename=` to
+`baffled_rad_zmatrix_axi` if you need to supply a custom precomputed `.mat`
+file instead.
 
 ---
 
@@ -104,9 +98,8 @@ below for key fields. For a complete runnable example, see
 | `init_horn_data(fvec, N, coords, geom, ...)` | `MMM_init` | Build simulation data dictionary |
 | `make_big_fmat(N, coords, mode_info, f)` | `MMM_makebigfmat` | Assemble F matrices for all junctions |
 | `calculate_matrices(data, ...)` | `MMM_calculateMatrices` | Propagate impedances mouth→throat |
-| `baffled_rad_zmatrix_axi(k, ρ, c, S, M, file)` | `MMM_ASbaffledradzmatrixIntp` | Modal radiation impedance (interpolated) |
-| `baffled_rad_zmatrix_direct_axi(k, ρ, c, S, M, bz)` | `MMM_ASbaffledradzmatrix` | Modal radiation impedance (direct integration) |
-| `precompute_rad_zmatrix(M, ...)` | `MMM_ASbaffledradzmatrixPrecompute` | Generate a `ZradAS{N}.mat` lookup table |
+| `baffled_rad_zmatrix_axi(k, ρ, c, S, M, ...)` | `MMM_ASbaffledradzmatrixIntp` | Modal radiation impedance (interpolated from auto-cached table) |
+| `baffled_rad_zmatrix_direct_axi(k, ρ, c, S, M, bz, ...)` | `MMM_ASbaffledradzmatrix` | Modal radiation impedance (fixed Gauss-Legendre quadrature) |
 | `pressure_distribution_axi(freq, data, ...)` | `MMM_ASpressureDistribution` | Spatial pressure field inside/near horn |
 | `radiated_pressure_axi(data, pts, ...)` | `MMM_ASradiatedPressure` | Radiated pressure (far-field or Rayleigh) |
 | `get_di_axi(data, angles)` | `MMM_ASgetDI` | Directivity index |
@@ -136,9 +129,10 @@ modified in-place by `calculate_matrices`, `radiated_pressure_axi`, and
 uv run pytest tests/ -v
 ```
 
-27 tests validate the entire axisymmetric pipeline against MATLAB reference
+26 tests validate the entire axisymmetric pipeline against MATLAB reference
 outputs saved in `test_data/`. Tolerance: `atol=1e-12` for direct math, `1e-10`
-for interpolation, `1e-8` for far-field pressure.
+for interpolation, `atol=0.02` for pressure distribution, `1e-8` for far-field
+pressure.
 
 ---
 
@@ -151,7 +145,7 @@ for interpolation, `1e-8` for far-field pressure.
 - Mode-matching F-matrix assembly
 - Core impedance propagation (mouth → throat)
 - Interpolation-based and direct-integration modal radiation impedance
-- Lookup table precomputation via `precompute_rad_zmatrix`
+- Auto-cached modal radiation impedance lookup table
 - Far-field modal radiated pressure
 - Near-field radiated pressure via Rayleigh integral
 - Internal and near-field pressure distribution (`pressure_distribution_axi`)
