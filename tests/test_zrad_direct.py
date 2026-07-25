@@ -11,6 +11,7 @@ from scipy.special import jn_zeros
 
 from mmm_toolbox.radiation import (
     _build_lookup_table,
+    _get_lookup_table,
     _struve_h1,
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
@@ -116,4 +117,62 @@ def test_built_table_matches_baseline():
     assert pct >= 99.5, (
         f"Only {pct:.2f}% of significant elements within 2% "
         f"(need >= 99.5%, {ok}/{n_sig})"
+    )
+
+
+def test_zrad_max_modes_error():
+    """Requesting more modes than available must raise ValueError."""
+    with pytest.raises(ValueError, match="Higher number of modes"):
+        baffled_rad_zmatrix_axi(
+            np.array([1.0]), 1.0, 1.0, 1.0, 40,
+            filename=str(TEST_DATA_DIR / "ZradAS32.mat"),
+        )
+
+
+def test_direct_with_hf_approx():
+    """Direct integration with HF asymptotic must agree with interpolation."""
+    bz = _load_bz()
+    k = np.array([2.0, 4.0, 8.0, 16.0, 32.0, 64.0])
+    max_modes = 5
+
+    Zmat_direct = baffled_rad_zmatrix_direct_axi(
+        k, 1.0, 1.0, 1.0, max_modes, bz, use_hf_approx=True,
+    )
+
+    Zmat_intp = baffled_rad_zmatrix_axi(
+        k, 1.0, 1.0, 1.0, max_modes,
+        filename=str(TEST_DATA_DIR / "ZradAS32.mat"),
+    )
+
+    np.testing.assert_allclose(
+        np.abs(Zmat_direct), np.abs(Zmat_intp), rtol=0.05, atol=0.0,
+    )
+
+
+def test_cache_superset_reuse():
+    """A smaller mode-count request must reuse a larger cached table."""
+    from pathlib import Path
+
+    cache_dir = Path.home() / ".cache" / "mmm_toolbox"
+    q = 2000
+
+    # Clean up: remove any cached tables at the test n_quad
+    for cf in cache_dir.glob(f"ZradAS*_q{q}.mat"):
+        cf.unlink()
+
+    # Build 24-mode table
+    _get_lookup_table(24, q)
+
+    # Remove the smaller 8-mode cache file if it happened to exist
+    small = cache_dir / f"ZradAS8_q{q}.mat"
+    if small.exists():
+        small.unlink()
+
+    # Request 8-mode — must reuse 24-mode, NOT rebuild
+    _get_lookup_table(8, q)
+
+    # No 8-mode file should have been created
+    assert not small.exists(), (
+        "8-mode request should have reused the existing 24-mode "
+        "cache instead of building a new table"
     )
