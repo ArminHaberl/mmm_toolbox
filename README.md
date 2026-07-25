@@ -77,9 +77,14 @@ A typical axisymmetric simulation follows six steps, equivalent to the original
 4. **Run the core simulation** with `calculate_matrices` — propagates modal
    impedances backward from mouth to throat, producing throat impedance `Z00`
 5. **Calculate radiated pressure** with `radiated_pressure_axi` — fast
-   far-field modal summation at arbitrary field points
+   far-field modal summation at arbitrary field points. Set
+   `use_farfield_approx=False` for near-field pressure via the Rayleigh
+   integral over the mouth surface.
 6. **Compute directivity index** with `get_di_axi` — numerical angular
    integration (Beranek / Gerzon)
+
+For single-frequency sound field visualization inside and in front of the
+horn, use `pressure_distribution_axi`.
 
 The `data` dictionary carries all state between calls. See the API reference
 below for key fields. For a complete runnable example, see
@@ -102,7 +107,8 @@ below for key fields. For a complete runnable example, see
 | `baffled_rad_zmatrix_axi(k, ρ, c, S, M, file)` | `MMM_ASbaffledradzmatrixIntp` | Modal radiation impedance (interpolated) |
 | `baffled_rad_zmatrix_direct_axi(k, ρ, c, S, M, bz)` | `MMM_ASbaffledradzmatrix` | Modal radiation impedance (direct integration) |
 | `precompute_rad_zmatrix(M, ...)` | `MMM_ASbaffledradzmatrixPrecompute` | Generate a `ZradAS{N}.mat` lookup table |
-| `radiated_pressure_axi(data, pts, ...)` | `MMM_ASradiatedPressure` | Far-field modal radiated pressure |
+| `pressure_distribution_axi(freq, data, ...)` | `MMM_ASpressureDistribution` | Spatial pressure field inside/near horn |
+| `radiated_pressure_axi(data, pts, ...)` | `MMM_ASradiatedPressure` | Radiated pressure (far-field or Rayleigh) |
 | `get_di_axi(data, angles)` | `MMM_ASgetDI` | Directivity index |
 
 The central object is the `data` dictionary returned by `init_horn_data` and
@@ -130,7 +136,7 @@ modified in-place by `calculate_matrices`, `radiated_pressure_axi`, and
 uv run pytest tests/ -v
 ```
 
-11 tests validate the entire axisymmetric pipeline against MATLAB reference
+27 tests validate the entire axisymmetric pipeline against MATLAB reference
 outputs saved in `test_data/`. Tolerance: `atol=1e-12` for direct math, `1e-10`
 for interpolation, `1e-8` for far-field pressure.
 
@@ -147,15 +153,15 @@ for interpolation, `1e-8` for far-field pressure.
 - Interpolation-based and direct-integration modal radiation impedance
 - Lookup table precomputation via `precompute_rad_zmatrix`
 - Far-field modal radiated pressure
+- Near-field radiated pressure via Rayleigh integral
+- Internal and near-field pressure distribution (`pressure_distribution_axi`)
 - Directivity index (Beranek / Gerzon weighting)
 
 ### Not yet ported
 
-- `MMM_ASpressureDistribution` — internal / near-field pressure field
-- Rayleigh integral near-field branch of `radiated_pressure_axi`
 - MATLAB plotting utilities (`MMM_PlotZth`, `MMM_ASplotHorn`, `MMM_ASpolarMap`)
-- Rectangular horn geometry (requires sourcing missing `MMM_RE*` source files
-  from the original MMM Toolbox)
+- Rectangular horn geometry (referenced but never fully implemented in the
+  original MMM Toolbox)
 
 ---
 
