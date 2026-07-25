@@ -37,12 +37,12 @@ from pathlib import Path
 
 import numpy as np
 
-from hornsim.axi import get_eigenfunctions_axi, make_km_axi
-from hornsim.core import calculate_matrices, init_horn_data
-from hornsim.geometry import horn_coord_1d
-from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
+from mmm_toolbox.axi import get_eigenfunctions_axi, make_km_axi
+from mmm_toolbox.core import calculate_matrices, init_horn_data
+from mmm_toolbox.geometry import horn_coord_1d
+from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "hornsim" / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "mmm_toolbox" / "data"
 
 # -----------------------------------------------------------------------
 #  Horn parameters

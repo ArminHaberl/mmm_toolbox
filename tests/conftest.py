@@ -1,4 +1,4 @@
-"""Shared fixtures for hornsim tests — load MATLAB-generated reference data."""
+"""Shared fixtures for mmm_toolbox tests — load MATLAB-generated reference data."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 import scipy.io
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
-DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
+DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 
 
 @pytest.fixture(scope="session")

@@ -17,7 +17,7 @@ from scipy.interpolate import CubicSpline
 from scipy.io import loadmat, savemat
 from scipy.special import j0, j1
 
-from hornsim.axi import get_eigenfunctions_axi
+from mmm_toolbox.axi import get_eigenfunctions_axi
 
 _DATA_DIR = Path(__file__).parent / "data"
 
@@ -620,7 +620,7 @@ def pressure_distribution_axi(
     pmatx : (resolution, n_points) complex ndarray
         Complex pressure at each mesh point.
     """
-    from hornsim.axi import make_km_axi
+    from mmm_toolbox.axi import make_km_axi
 
     n_modes = data["n_modes"]
     eigen_values = data["eigen_values"]
@@ -746,7 +746,7 @@ def pressure_distribution_axi(
 
 def _calculate_matrices_single(data: dict) -> dict:
     """Run calculate_matrices for a single-frequency data dict."""
-    from hornsim.axi import make_km_axi
+    from mmm_toolbox.axi import make_km_axi
 
     n_modes = data["n_modes"]
     n_steps = data["stepped_coords"].shape[0]

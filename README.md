@@ -1,4 +1,4 @@
-# HORNSIM
+# mmm_toolbox
 
 A Python port of the **Mode Matching Method (MMM) Toolbox** for simulating the
 acoustic performance of horn loudspeakers. Calculates throat impedance, internal
@@ -26,8 +26,8 @@ Requires Python ≥ 3.12. The project uses [uv](https://github.com/astral-sh/uv)
 for package management.
 
 ```bash
-git clone <repo-url> hornsim
-cd hornsim
+git clone <repo-url> mmm_toolbox
+cd mmm_toolbox
 uv pip install -e .
 ```
 
@@ -48,7 +48,7 @@ The library requires two precomputed data files:
 | `MMM_besselzeros.mat` | Zeros of Bessel function J₁ (axisymmetric eigenvalues) |
 | `ZradAS32.mat` | Precomputed modal radiation impedance lookup table (32 modes) |
 
-These are bundled with the package in `hornsim/data/`. They are also included
+These are bundled with the package in `mmm_toolbox/data/`. They are also included
 in the original [MMM Toolbox](https://github.com/bkolbrek/MMM_toolbox).
 Pass explicit paths to `init_horn_data` and `baffled_rad_zmatrix_axi`
 if you need to use custom files.

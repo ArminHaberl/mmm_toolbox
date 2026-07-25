@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hornsim.axi import make_km_axi
+from mmm_toolbox.axi import make_km_axi
 
 
 def test_makekm(makekm_mat, init_mat, bessel_zeros):

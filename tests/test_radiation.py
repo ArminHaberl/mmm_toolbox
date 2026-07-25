@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
-from hornsim.radiation import baffled_rad_zmatrix_axi
+from mmm_toolbox.radiation import baffled_rad_zmatrix_axi
 
-DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
+DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 
 
 def test_radiation_zmatrix(zrad_mat, init_mat):

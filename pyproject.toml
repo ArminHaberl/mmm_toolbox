@@ -1,5 +1,5 @@
 [project]
-name = "hornsim"
+name = "mmm_toolbox"
 version = "0.1.0"
 description = "A python implementation of the MMM toolbox by Bjørn Kolbrek."
 readme = "README.md"
@@ -21,10 +21,10 @@ requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["hornsim*"]
+include = ["mmm_toolbox*"]
 
 [tool.setuptools.package-data]
-hornsim = ["data/*.mat"]
+mmm_toolbox = ["data/*.mat"]
 
 [dependency-groups]
 dev = [

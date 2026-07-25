@@ -8,14 +8,14 @@ import numpy as np
 import scipy.io
 from scipy.special import j1 as besselj1
 
-from hornsim.radiation import (
+from mmm_toolbox.radiation import (
     _struve_h1,
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
     precompute_rad_zmatrix,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
+DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 
 
 def _load_bz():

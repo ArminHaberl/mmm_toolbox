@@ -7,7 +7,7 @@ WARNING: This takes several minutes. For 32 modes, expect ~5-15 minutes
 depending on your CPU.
 """
 
-from hornsim.radiation import precompute_rad_zmatrix
+from mmm_toolbox.radiation import precompute_rad_zmatrix
 
 if __name__ == "__main__":
     precompute_rad_zmatrix(max_modes=32)

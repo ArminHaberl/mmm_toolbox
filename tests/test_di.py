@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hornsim.plotting import get_di_axi
+from mmm_toolbox.plotting import get_di_axi
 
 
 def test_di(di_mat, prad_mat):
@@ -21,10 +21,10 @@ def test_di_gerzon(di_gerzon_mat, init_mat, horncoords_mat):
     """Directivity index from 24 angles — Gerzon weighting path."""
     from pathlib import Path
 
-    from hornsim.core import calculate_matrices, init_horn_data
-    from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
+    from mmm_toolbox.core import calculate_matrices, init_horn_data
+    from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-    DATA_DIR = Path(__file__).parent.parent / "hornsim" / "data"
+    DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 
     expected = di_gerzon_mat["DI_gerzon"].flatten()
     angles = di_gerzon_mat["Angext_coarse"].flatten()

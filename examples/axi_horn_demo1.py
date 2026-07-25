@@ -14,7 +14,7 @@ at the throat.  The workflow:
   6. Visualisation: horn profile, throat impedance, SPL curves, polar map
 
 Requires matplotlib (``pip install matplotlib``) in addition to the
-standard hornsim dependencies.
+standard mmm_toolbox dependencies.
 
 ----------------------------------------------------------------------
   This file is part of the Mode Matching Method (MMM) Toolbox by
@@ -41,12 +41,12 @@ from pathlib import Path
 
 import numpy as np
 
-from hornsim.core import calculate_matrices, init_horn_data
-from hornsim.geometry import horn_coord_1d
-from hornsim.plotting import get_di_axi
-from hornsim.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
+from mmm_toolbox.core import calculate_matrices, init_horn_data
+from mmm_toolbox.geometry import horn_coord_1d
+from mmm_toolbox.plotting import get_di_axi
+from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "hornsim" / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "mmm_toolbox" / "data"
 
 # -----------------------------------------------------------------------
 #  Horn parameters

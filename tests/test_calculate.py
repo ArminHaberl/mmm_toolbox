@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hornsim.core import calculate_matrices
+from mmm_toolbox.core import calculate_matrices
 
 
 def test_calculate(calculate_mat, init_mat, zrad_mat):

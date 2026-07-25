@@ -1,10 +1,10 @@
-"""HORNSIM: Python implementation of the Mode Matching Method (MMM) toolbox."""
+"""mmm_toolbox: Python implementation of the Mode Matching Method (MMM) toolbox."""
 
-from hornsim.axi import get_eigenfunctions_axi, make_fmat_axi, make_km_axi
-from hornsim.core import calculate_matrices, init_horn_data, make_big_fmat
-from hornsim.geometry import horn_coord_1d, make_steps
-from hornsim.plotting import get_di_axi
-from hornsim.radiation import (
+from mmm_toolbox.axi import get_eigenfunctions_axi, make_fmat_axi, make_km_axi
+from mmm_toolbox.core import calculate_matrices, init_horn_data, make_big_fmat
+from mmm_toolbox.geometry import horn_coord_1d, make_steps
+from mmm_toolbox.plotting import get_di_axi
+from mmm_toolbox.radiation import (
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
     precompute_rad_zmatrix,

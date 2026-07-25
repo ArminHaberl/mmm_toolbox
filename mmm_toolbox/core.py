@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 from scipy.io import loadmat
 
-from hornsim.axi import make_fmat_axi
-from hornsim.geometry import make_steps
+from mmm_toolbox.axi import make_fmat_axi
+from mmm_toolbox.geometry import make_steps
 
 _DATA_DIR = Path(__file__).parent / "data"
 
@@ -117,7 +117,7 @@ def calculate_matrices(data: dict, progress_report: bool = False) -> dict:
     Modifies and returns data dict with added keys: BigZ, Umat, Z00,
     UmouthPw, Umouth.
     """
-    from hornsim.axi import make_km_axi
+    from mmm_toolbox.axi import make_km_axi
 
     n_modes = data["n_modes"]
     nfreq = data["nfreq"]

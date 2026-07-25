@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from hornsim.core import init_horn_data
+from mmm_toolbox.core import init_horn_data
 
 
 def test_init(init_mat, horncoords_mat):

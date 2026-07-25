@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hornsim.axi import make_fmat_axi
+from mmm_toolbox.axi import make_fmat_axi
 
 
 def test_makefmat_expanding(makefmat_expanding_mat, bessel_zeros):

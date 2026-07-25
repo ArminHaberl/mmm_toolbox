@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 
-from hornsim.geometry import horn_coord_1d
+from mmm_toolbox.geometry import horn_coord_1d
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 _RTH = np.sqrt(10e-4 / np.pi)

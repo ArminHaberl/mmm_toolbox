@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from hornsim.geometry import horn_coord_1d
-from hornsim.radiation import pressure_distribution_axi
+from mmm_toolbox.geometry import horn_coord_1d
+from mmm_toolbox.radiation import pressure_distribution_axi
 
 
 def test_pressure_distribution_internal(
@@ -23,7 +23,7 @@ def test_pressure_distribution_internal(
     rm = np.sqrt(sm / np.pi)
     horncoords = horn_coord_1d("tractrix", rth, rm, Lh, 1.0, dz)
 
-    from hornsim.core import init_horn_data
+    from mmm_toolbox.core import init_horn_data
     data = init_horn_data(np.array([freq]), n_modes, horncoords, "axi", rho, c)
 
     plotcoordsz, plotcoordsx, Pmatx = pressure_distribution_axi(
@@ -55,7 +55,7 @@ def test_pressure_distribution_nearfield(
     rm = np.sqrt(sm / np.pi)
     horncoords = horn_coord_1d("tractrix", rth, rm, Lh, 1.0, dz)
 
-    from hornsim.core import init_horn_data
+    from mmm_toolbox.core import init_horn_data
     data = init_horn_data(np.array([1500.0]), n_modes, horncoords, "axi", rho, c)
 
     plotcoordsz, plotcoordsx, Pmatx = pressure_distribution_axi(

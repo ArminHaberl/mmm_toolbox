@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hornsim.axi import get_eigenfunctions_axi
+from mmm_toolbox.axi import get_eigenfunctions_axi
 
 
 def test_eigenfunctions(eigenfunctions_mat, init_mat):
