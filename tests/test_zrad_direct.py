@@ -1,7 +1,5 @@
-"""Test MMM_ASbaffledradzmatrix — direct numerical integration + precomputation."""
+"""Test MMM_ASbaffledradzmatrix — direct numerical integration."""
 
-import os
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -12,14 +10,14 @@ from mmm_toolbox.radiation import (
     _struve_h1,
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
-    precompute_rad_zmatrix,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
+BZ_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
+TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def _load_bz():
-    d = scipy.io.loadmat(str(DATA_DIR / "MMM_besselzeros.mat"))
+    d = scipy.io.loadmat(str(BZ_DIR / "MMM_besselzeros.mat"))
     return d["bz"].flatten()
 
 
@@ -58,7 +56,7 @@ def test_direct_symmetry():
 
 
 def test_direct_agrees_with_interpolation():
-    """Direct integration should agree with interpolation within ~1%."""
+    """Direct integration should agree with interpolation within 2%."""
     bz = _load_bz()
     k = np.array([2.0, 4.0, 8.0, 16.0, 32.0])
     max_modes = 5
@@ -69,33 +67,9 @@ def test_direct_agrees_with_interpolation():
 
     Zmat_intp = baffled_rad_zmatrix_axi(
         k, 1.0, 1.0, 1.0, max_modes,
-        str(DATA_DIR / "ZradAS32.mat"),
+        filename=str(TEST_DATA_DIR / "ZradAS32.mat"),
     )
 
     np.testing.assert_allclose(
         np.abs(Zmat_direct), np.abs(Zmat_intp), rtol=0.02, atol=0.0,
     )
-
-
-def test_precompute_small():
-    """Precompute a small lookup table and verify structure."""
-    max_modes = 5
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        out = Path(tmpdir) / "ZradAS5_test.mat"
-        result_path = precompute_rad_zmatrix(
-            max_modes=max_modes,
-            bessel_zeros_path=str(DATA_DIR / "MMM_besselzeros.mat"),
-            output_path=str(out),
-            progress_report=False,
-        )
-
-        assert os.path.exists(result_path)
-
-        d = scipy.io.loadmat(result_path)
-        ka = d["ka"].flatten()
-        Zmat = d["Zmat"]
-
-        assert Zmat.shape[:2] == (max_modes, max_modes)
-        assert len(ka) == Zmat.shape[2]
-        assert np.all(Zmat[0, 0, :].real > 0.0)

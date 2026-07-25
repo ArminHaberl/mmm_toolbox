@@ -46,8 +46,6 @@ from mmm_toolbox.geometry import horn_coord_1d
 from mmm_toolbox.plotting import get_di_axi
 from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "mmm_toolbox" / "data"
-
 # -----------------------------------------------------------------------
 #  Horn parameters
 # -----------------------------------------------------------------------
@@ -93,14 +91,12 @@ data = init_horn_data(freq, N, horncoords, "axi", rho, c)
 #  3.  Radiation impedance at the mouth
 # -----------------------------------------------------------------------
 print("Calculating radiation impedance ...")
-_zrad_path = str(DATA_DIR / "ZradAS32.mat")
 data["Zrad"] = baffled_rad_zmatrix_axi(
     data["k"],
     rho,
     c,
     data["Sm"],
     data["n_modes"],
-    _zrad_path,
 )
 
 # -----------------------------------------------------------------------

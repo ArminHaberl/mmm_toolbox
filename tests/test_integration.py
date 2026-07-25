@@ -13,7 +13,7 @@ from mmm_toolbox.geometry import horn_coord_1d
 from mmm_toolbox.plotting import get_di_axi
 from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
+DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def test_full_pipeline(

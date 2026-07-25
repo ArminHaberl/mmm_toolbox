@@ -3,7 +3,6 @@
 MATLAB originals:
   - MMM_ASbaffledradzmatrixIntp -> baffled_rad_zmatrix_axi
   - MMM_ASbaffledradzmatrix -> baffled_rad_zmatrix_direct_axi
-  - MMM_ASbaffledradzmatrixPrecompute -> precompute_rad_zmatrix
   - MMM_ASradiatedPressure -> radiated_pressure_axi
   - MMM_ASpressureDistribution -> pressure_distribution_axi
 """
@@ -12,10 +11,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-from scipy.integrate import quad
 from scipy.interpolate import CubicSpline
 from scipy.io import loadmat, savemat
-from scipy.special import j0, j1
+from scipy.special import j0, j1, roots_legendre
 
 from mmm_toolbox.axi import get_eigenfunctions_axi
 
@@ -33,44 +31,127 @@ def _struve_h1(x: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Direct numerical integration helpers
+# Fixed Gauss-Legendre quadrature (core numerical integration)
 # ---------------------------------------------------------------------------
 
 
-def _func_dn(
-    tau: float, gamma_n: float, kR: float
-) -> float:
-    """Core integrand kernel: D_n(tau) = -√2·τ·J₁(τ·kR) / ((γₙ/kR)² - τ²)."""
-    return (
-        -np.sqrt(2.0)
-        * tau
-        * j1(tau * kR)
-        / ((gamma_n / kR) ** 2 - tau**2)
-    )
+def _compute_zmat_fixed_quad(
+    k: np.ndarray,
+    kR: np.ndarray,
+    a: float,
+    bz: np.ndarray,
+    max_modes: int,
+    use_hf_approx: bool,
+    n_quad_r: int = 500,
+    n_quad_x: int = 500,
+    progress_report: bool = False,
+) -> np.ndarray:
+    """Compute entire Zmat via fixed Gauss-Legendre quadrature + broadcasting.
 
+    Avoids per-mode-pair loops by integrating all modes simultaneously
+    at each quadrature node.  The (0,0) mode is overwritten with the
+    analytical closed-form solution after quadrature.
+    """
+    nfreq = len(k)
+    M = max_modes
 
-def _resistance_integrand(
-    phi: float, n: int, m: int, kR: float, bz: np.ndarray
-) -> float:
-    """Integrand for modal radiation resistance (φ ∈ [0, π/2])."""
-    sinphi = np.sin(phi)
-    return sinphi * _func_dn(sinphi, bz[n], kR) * _func_dn(sinphi, bz[m], kR)
+    R00 = 1.0 - j1(2.0 * kR) / kR
+    X00 = 2.0 * _struve_h1(2.0 * kR) / (2.0 * kR)
 
+    Zmat = np.zeros((M, M, nfreq), dtype=complex)
 
-def _reactance_integrand(
-    phi: float, n: int, m: int, kR: float, bz: np.ndarray
-) -> float:
-    """Integrand for modal radiation reactance (φ ∈ [0, 10])."""
-    coshphi = np.cosh(phi)
-    return (
-        coshphi
-        * _func_dn(coshphi, bz[n], kR)
-        * _func_dn(coshphi, bz[m], kR)
-    )
+    bz_div_kR_sq = (bz[:M, np.newaxis] / kR[np.newaxis, :]) ** 2
+
+    # ---- Resistance: phi in [0, pi/2] ----
+    nodes, weights = roots_legendre(n_quad_r)
+    t = 0.5 * (nodes + 1.0) * (np.pi / 2.0)
+    w = weights * (np.pi / 4.0)
+
+    for idx in range(n_quad_r):
+        sinphi = np.sin(t[idx])
+        tau = sinphi
+        if tau == 0.0:
+            continue
+
+        Jv = j1(tau * kR)
+        denom = bz_div_kR_sq - tau**2
+        D = -np.sqrt(2.0) * tau * Jv[np.newaxis, :] / denom
+
+        small = np.abs(denom) < 1e-12
+        if np.any(small):
+            rows, cols = np.where(small)
+            for mi, ki in zip(rows, cols):
+                D[mi, ki] = np.sqrt(2.0) / 2.0 * kR[ki] * j0(bz[mi])
+
+        Zmat.real += w[idx] * sinphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
+
+        if progress_report and (idx + 1) % 100 == 0:
+            pct = 100.0 * (idx + 1) / n_quad_r
+            print(f"  Resistance quadrature: {pct:.0f}%")
+
+    Zmat.real[0, 0, :] = R00
+
+    # ---- Reactance: phi in [0, 10] ----
+    nodes_x, weights_x = roots_legendre(n_quad_x)
+    t_x = 0.5 * (nodes_x + 1.0) * 10.0
+    w_x = weights_x * 5.0
+
+    for idx in range(n_quad_x):
+        coshphi = np.cosh(t_x[idx])
+        tau = coshphi
+
+        Jv = j1(tau * kR)
+        denom = bz_div_kR_sq - tau**2
+        D = -np.sqrt(2.0) * tau * Jv[np.newaxis, :] / denom
+
+        small = np.abs(denom) < 1e-12
+        if np.any(small):
+            rows, cols = np.where(small)
+            for mi, ki in zip(rows, cols):
+                D[mi, ki] = np.sqrt(2.0) / 2.0 * kR[ki] * j0(bz[mi])
+
+        Zmat.imag += w_x[idx] * coshphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
+
+        if progress_report and (idx + 1) % 100 == 0:
+            pct = 100.0 * (idx + 1) / n_quad_x
+            print(f"  Reactance quadrature: {pct:.0f}%")
+
+    Zmat.imag[0, 0, :] = X00
+
+    # ---- High-frequency asymptotic ---
+    if use_hf_approx:
+        for m in range(M):
+            for n in range(m, M):
+                if m == 0 and n == 0:
+                    continue
+                mu_max = max(bz[m], bz[n])
+                hf_mask = kR >= mu_max * 2.5
+                if not hf_mask.any():
+                    continue
+
+                if m == n:
+                    R_hf = (
+                        R00[hf_mask]
+                        * k[hf_mask]
+                        / np.sqrt(k[hf_mask] ** 2 - (mu_max / a) ** 2)
+                    )
+                else:
+                    R_hf = (R00[hf_mask] - 1.0) / (
+                        1.0 - (mu_max / kR[hf_mask]) ** 2
+                    )
+                X_hf = X00[hf_mask] / (1.0 - (mu_max / kR[hf_mask]) ** 2)
+
+                Zmat.real[m, n, hf_mask] = R_hf
+                Zmat.imag[m, n, hf_mask] = X_hf
+                if m != n:
+                    Zmat.real[n, m, hf_mask] = R_hf
+                    Zmat.imag[n, m, hf_mask] = X_hf
+
+    return Zmat
 
 
 # ---------------------------------------------------------------------------
-# Direct numerical integration (slow but reference-quality)
+# Public API -- direct numerical integration
 # ---------------------------------------------------------------------------
 
 
@@ -83,212 +164,114 @@ def baffled_rad_zmatrix_direct_axi(
     bz: np.ndarray,
     use_hf_approx: bool = False,
     progress_report: bool = False,
+    n_quad: int = 500,
 ) -> np.ndarray:
-    """Modal radiation impedance via direct numerical integration.
+    """Modal radiation impedance via fixed Gauss-Legendre quadrature.
 
     Corresponds to MMM_ASbaffledradzmatrix.
 
-    Integrates over φ ∈ [0, π/2] for resistance and φ ∈ [0, 10] for
-    reactance using adaptive Gauss-Kronrod quadrature. Substantially
-    slower than the interpolation version; intended for precomputation
-    of lookup tables.
+    Integrates over phi in [0, pi/2] for resistance and phi in [0, 10]
+    for reactance, broadcasting over all mode pairs simultaneously at
+    each quadrature node.
 
     Parameters
     ----------
     k : (nfreq,) array
         Wavenumbers [rad/m].
     rho : float
-        Density of medium [kg/m³].
+        Density of medium [kg/m^3].
     c : float
         Sound speed [m/s].
     S : float
-        Cross-section area of opening [m²].
+        Cross-section area of opening [m^2].
     max_modes : int
         Number of modes.
     bz : (max_modes,) array
-        Zeros of J₁ (eigenvalues).
+        Zeros of J1 (eigenvalues).
     use_hf_approx : bool
-        If True, use asymptotic formulas above 2.5× the mode cutoff
+        If True, use asymptotic formulas above 2.5x the mode cutoff
         frequency instead of numerical integration.
     progress_report : bool
         Print progress.
+    n_quad : int
+        Number of Gauss-Legendre nodes (applied to both R and X).
 
     Returns
     -------
     Zmat : (max_modes, max_modes, nfreq) complex ndarray
         Modal radiation impedance matrix.
     """
-    nfreq = len(k)
     a = np.sqrt(S / np.pi)
     kR = k * a
 
-    tol = np.maximum(
-        np.minimum(0.01, 10.0 ** (-np.log10(kR) - 1)), 1e-6
-    )
-    if nfreq > 1:
-        tol = np.full_like(kR, 1e-6)
-
-    # Analytical fundamental mode
-    R00 = 1.0 - j1(2.0 * kR) / kR
-    X00 = 2.0 * _struve_h1(2.0 * kR) / (2.0 * kR)
-
-    Zmat = np.zeros((max_modes, max_modes, nfreq), dtype=complex)
-
-    n_total = max_modes * max_modes
-    count = 0
     t_start = time.perf_counter()
+    Zmat = _compute_zmat_fixed_quad(
+        k, kR, a, bz, max_modes, use_hf_approx,
+        n_quad_r=n_quad, n_quad_x=n_quad,
+        progress_report=progress_report,
+    )
+    elapsed = time.perf_counter() - t_start
+    if progress_report:
+        print(f"Fixed-quadrature done ({elapsed:.1f}s)")
 
-    for m in range(max_modes):
-        for n in range(max_modes):
-            if m == 0 and n == 0:
-                Z = R00 + 1j * X00
-                count += 1
-            elif n >= m:
-                count += 1
-                mu_max = max(bz[m], bz[n])
-
-                if use_hf_approx:
-                    int_id = np.where(kR < (mu_max * 2.5 + 1))[0]
-                    int_hf = np.where(kR >= mu_max * 2.5)[0]
-                else:
-                    int_id = np.arange(nfreq)
-                    int_hf = np.array([], dtype=int)
-
-                R = np.zeros(nfreq)
-                X = np.zeros(nfreq)
-
-                # High-frequency asymptotic
-                if len(int_hf) > 0:
-                    if m == n:
-                        R[int_hf] = (
-                            R00[int_hf]
-                            * k[int_hf]
-                            / np.sqrt(
-                                k[int_hf] ** 2 - (mu_max / a) ** 2
-                            )
-                        )
-                    else:
-                        R[int_hf] = (R00[int_hf] - 1.0) / (
-                            1.0 - (mu_max / kR[int_hf]) ** 2
-                        )
-                    X[int_hf] = X00[int_hf] / (
-                        1.0 - (mu_max / kR[int_hf]) ** 2
-                    )
-
-                # Numerical integration for remaining points
-                for nk in int_id:
-                    R[nk], _ = quad(
-                        _resistance_integrand,
-                        0.0,
-                        np.pi / 2.0,
-                        args=(m, n, kR[nk], bz),
-                        epsabs=tol[nk],
-                        limit=500,
-                    )
-                    X[nk], _ = quad(
-                        _reactance_integrand,
-                        0.0,
-                        10.0,
-                        args=(m, n, kR[nk], bz),
-                        epsabs=1e-6,
-                        limit=500,
-                    )
-
-                Z = R + 1j * X
-            else:
-                Z = Zmat[n, m, :]
-                count += 1
-
-            Zmat[m, n, :] = Z
-
-            if progress_report and n >= m:
-                pct = 100.0 * count / n_total
-                elapsed = time.perf_counter() - t_start
-                print(
-                    f"{pct:5.1f}%: mode ({m},{n}) "
-                    f"({elapsed:.1f}s elapsed)"
-                )
-
-    Zmat = rho * c / S * Zmat
-    return Zmat
+    return rho * c / S * Zmat
 
 
 # ---------------------------------------------------------------------------
-# Precomputation of radiation impedance lookup table
+# Lookup table cache (disk-backed, ~/.cache/mmm_toolbox/)
 # ---------------------------------------------------------------------------
 
 
-def precompute_rad_zmatrix(
-    max_modes: int = 32,
-    bessel_zeros_path: str | None = None,
-    output_path: str | None = None,
-    progress_report: bool = True,
-) -> str:
-    """Precompute and save a modal radiation impedance lookup table.
-
-    Corresponds to MMM_ASbaffledradzmatrixPrecompute.
-
-    Generates a ka grid (20 log-space points below ka=3, then linearly
-    spaced to 2.5× the highest modal cutoff), computes the normalized
-    radiation impedance matrix via direct numerical integration, and
-    saves the result as a .mat file compatible with
-    ``baffled_rad_zmatrix_axi``.
-
-    Parameters
-    ----------
-    max_modes : int
-        Number of modes to precompute (default 32).
-    bessel_zeros_path : str or None
-        Path to MMM_besselzeros.mat. Defaults to the file bundled
-        with the package.
-    output_path : str or None
-        Output .mat file path. Defaults to
-        ``ZradAS{max_modes}.mat`` in the current directory.
-    progress_report : bool
-        Print progress.
-
-    Returns
-    -------
-    output_path : str
-        Path to the saved file.
-    """
-    if bessel_zeros_path is None:
-        bessel_zeros_path = str(_DATA_DIR / "MMM_besselzeros.mat")
-
-    bz_mat = loadmat(bessel_zeros_path)
+def _build_lookup_table(
+    max_modes: int, n_quad: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the normalized (rho=1, c=1, S=1) lookup table from scratch."""
+    bz_mat = loadmat(str(_DATA_DIR / "MMM_besselzeros.mat"))
     bz = bz_mat["bz"].flatten()
-
-    if output_path is None:
-        output_path = f"ZradAS{max_modes}.mat"
 
     kamax = bz[max_modes - 1] * 2.5
     kamin = 0.1
-    nk = int(bz[max_modes - 1] * 4)
+    nk = int(bz[max_modes - 1] * 4.3)
 
     ka1 = np.logspace(np.log10(kamin), np.log10(3.0), 20)
     ka2 = np.linspace(3.0, kamax, nk)
     ka = np.concatenate([ka1, ka2[1:]])
     k = ka * np.sqrt(np.pi)
+    a = np.sqrt(1.0 / np.pi)
+    kR = k * a
+
+    Zmat = _compute_zmat_fixed_quad(
+        k, kR, a, bz, max_modes, use_hf_approx=True,
+        n_quad_r=n_quad, n_quad_x=n_quad,
+    )
+    return ka, Zmat
+
+
+def _get_lookup_table(
+    max_modes: int, n_quad: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return (ka, Zmat) from disk cache, or build + cache if missing."""
+    cache_dir = Path.home() / ".cache" / "mmm_toolbox"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"ZradAS{max_modes}_q{n_quad}.mat"
+
+    if cache_file.exists():
+        data = loadmat(str(cache_file))
+        return data["ka"].flatten(), data["Zmat"]
 
     print(
-        f"Precomputing radiation impedance for {max_modes} modes "
-        f"({nk + 19} ka points)..."
+        f"Building radiation-impedance lookup table ({max_modes} modes, "
+        f"{n_quad} quadrature nodes)..."
     )
-    print(
-        "This may take several minutes."
-    )
+    ka, Zmat = _build_lookup_table(max_modes, n_quad)
+    savemat(str(cache_file), {"ka": ka, "Zmat": Zmat})
+    print(f"Cached to {cache_file}")
+    return ka, Zmat
 
-    t_start = time.perf_counter()
-    Zmat = baffled_rad_zmatrix_direct_axi(
-        k, 1.0, 1.0, 1.0, max_modes, bz,
-        use_hf_approx=True, progress_report=progress_report,
-    )
-    elapsed = time.perf_counter() - t_start
 
-    savemat(output_path, {"ka": ka, "Zmat": Zmat})
-    print(f"Saved to {output_path} ({elapsed:.1f}s)")
-
-    return output_path
+# ---------------------------------------------------------------------------
+# Public API -- interpolation from lookup table
+# ---------------------------------------------------------------------------
 
 
 def baffled_rad_zmatrix_axi(
@@ -297,18 +280,26 @@ def baffled_rad_zmatrix_axi(
     c: float,
     S: float,
     max_modes: int,
-    filename: str,
+    filename: str | None = None,
+    n_quad: int = 2000,
 ) -> np.ndarray:
     """Modal radiation impedance matrix for circular aperture in infinite baffle.
 
     Corresponds to MMM_ASbaffledradzmatrixIntp.
-    Uses interpolation from a precomputed lookup table.
+
+    Uses cubic-spline interpolation from a precomputed lookup table.
+    By default the table is built on first call and cached to disk at
+    ~/.cache/mmm_toolbox/.  Pass *filename* to load a custom
+    precomputed .mat file instead.
 
     Returns (max_modes, max_modes, len(k)) complex array.
     """
-    zrad_mat = loadmat(filename)
-    ka = zrad_mat["ka"].flatten()
-    Zmat = zrad_mat["Zmat"]
+    if filename is not None:
+        zrad_mat = loadmat(filename)
+        ka = zrad_mat["ka"].flatten()
+        Zmat = zrad_mat["Zmat"]
+    else:
+        ka, Zmat = _get_lookup_table(max_modes, n_quad)
 
     available_modes = Zmat.shape[0]
     if max_modes > available_modes:
@@ -317,21 +308,18 @@ def baffled_rad_zmatrix_axi(
             f"precalculated ({available_modes})"
         )
 
-    # Load Bessel zeros bundled with the package
     bz_mat = loadmat(str(_DATA_DIR / "MMM_besselzeros.mat"))
     bz = bz_mat["bz"].flatten()
 
     a = np.sqrt(S / np.pi)
     kain = k * a
 
-    # Analytical fundamental mode (0,0)
     R00 = 1.0 - j1(2.0 * kain) / kain
     X00 = 2.0 * _struve_h1(2.0 * kain) / (2.0 * kain)
 
     nfreq = len(k)
     ZmatOut = np.zeros((max_modes, max_modes, nfreq), dtype=complex)
 
-    # Precompute interpolation masks
     ka_min = np.min(ka)
     ka_max = np.max(ka)
     intp_id = np.where((kain >= ka_min) & (kain <= ka_max))[0]
@@ -347,22 +335,18 @@ def baffled_rad_zmatrix_axi(
             elif m <= n:
                 bzq = max(bz[m], bz[n])
 
-                # --- Resistance ---
                 Y = np.real(Zmat[m, n, :])
                 zp = _get_poly_coeff(m + 1, n + 1, bz)
 
-                # R1: low-frequency polynomial extrapolation (kain < 1)
                 low_id = np.where(kain < minka)[0]
                 R1 = np.polyval(zp, kain[low_id] ** 2)
 
-                # R2: mid-frequency spline interpolation
                 if len(intp_id_r) > 0:
                     cs_r = CubicSpline(ka, Y)
                     R2 = cs_r(kain[intp_id_r])
                 else:
                     R2 = np.array([])
 
-                # R3: high-frequency asymptotic
                 if m == n:
                     R3 = (
                         R00[pos_id]
@@ -376,14 +360,11 @@ def baffled_rad_zmatrix_axi(
 
                 R = np.concatenate([R1, R2, R3])
 
-                # --- Reactance ---
                 Y = np.real(Zmat[m, n, :])
 
-                # X1: low-frequency linear extrapolation (kain < ka(1))
                 low_x_id = np.where(kain < ka[0])[0]
                 X1 = Y[0] * kain[low_x_id] / ka[0]
 
-                # X2: mid-frequency spline interpolation
                 Y_x = np.imag(Zmat[m, n, :])
                 if len(intp_id) > 0:
                     cs_x = CubicSpline(ka, Y_x)
@@ -391,7 +372,6 @@ def baffled_rad_zmatrix_axi(
                 else:
                     X2 = np.array([])
 
-                # X3: high-frequency asymptotic
                 X3 = X00[pos_id] / (1.0 - (bzq / kain[pos_id]) ** 2)
 
                 X = np.concatenate([X1, X2, X3])
@@ -410,7 +390,7 @@ def _get_poly_coeff(n: int, m: int, bz: np.ndarray) -> np.ndarray:
     nlow = min(n, m)
     nhigh = max(n, m)
     if nlow == 1 and nhigh > 1:
-        idx = nhigh - 1  # convert to 0-based
+        idx = nhigh - 1
         p = np.zeros(4)
         p[1] = -1.0 / (3.0 * bz[idx] ** 2)
         p[0] = (
@@ -465,8 +445,8 @@ def _modal_radiated_pressure(
         theta = np.arctan2(pe[0], pe[1])
         s = data["k"] * a * np.sin(theta)
 
-        sm = s[np.newaxis, :]  # (1, nfreq)
-        bzm = data["eigen_values"][:n_modes, np.newaxis]  # (n_modes, 1)
+        sm = s[np.newaxis, :]
+        bzm = data["eigen_values"][:n_modes, np.newaxis]
 
         Theta2M = 2.0 * sm * j1(sm) / (sm**2 - bzm**2)
 
@@ -494,7 +474,7 @@ def _modal_radiated_pressure(
 
 
 # ---------------------------------------------------------------------------
-# Rayleigh integral (near-field) — stubs
+# Rayleigh integral (near-field)
 # ---------------------------------------------------------------------------
 
 
@@ -586,7 +566,7 @@ def _rayleigh_integral(
 
 
 # ---------------------------------------------------------------------------
-# Pressure distribution — stub
+# Pressure distribution
 # ---------------------------------------------------------------------------
 
 
@@ -625,11 +605,9 @@ def pressure_distribution_axi(
     n_modes = data["n_modes"]
     eigen_values = data["eigen_values"]
 
-    # Unit throat velocity
     U0 = np.zeros(n_modes, dtype=complex)
     U0[0] = data["St"]
 
-    # --- Re-run simulation at single frequency with keepZmatrix ---
     data["keep_zmatrix"] = True
     data["fvec"] = np.array([freq])
     data["nfreq"] = 1
@@ -639,6 +617,7 @@ def pressure_distribution_axi(
     data["Zrad"] = baffled_rad_zmatrix_direct_axi(
         data["k"], data["rho"], data["c"], data["Sm"],
         n_modes, eigen_values, use_hf_approx=True,
+        n_quad=2000,
     )
     data = _calculate_matrices_single(data)
 
@@ -646,7 +625,6 @@ def pressure_distribution_axi(
     Nz = stepped_coords.shape[0]
     NP = int(np.ceil(Nz / 2 + 1))
 
-    # --- Build mesh coordinates ---
     if add_nearfield:
         n_int = max(30, resolution + 5)
         data["n_integration_points"] = n_int
@@ -667,7 +645,6 @@ def pressure_distribution_axi(
     plotcoords_z = np.zeros((resolution, NPcoords))
     plotcoords_x = np.zeros((resolution, NPcoords))
 
-    # Z coordinates: z of each duct step (every 2nd stepped coord + final)
     step_indices = list(range(0, Nz, 2)) + [Nz - 1]
     plotcoords_z[:, :NP] = np.tile(
         stepped_coords[step_indices, 0],
@@ -678,10 +655,8 @@ def pressure_distribution_axi(
         plotcoords_x[:, NP:] = X
         plotcoords_z[:, NP:] = Zm + stepped_coords[-1, 0]
 
-    # --- Forward propagate U and compute pressure at each step ---
     ip = 0
 
-    # Throat (iz = 0)
     plotcoords_x[:, ip] = np.linspace(
         0.0, stepped_coords[0, 1], resolution,
     )
@@ -691,8 +666,6 @@ def pressure_distribution_axi(
     Pmat[:, ip] = data["BigZ"][:, :, 0, 0] @ U0
     Pmatx[:, ip] = phix @ Pmat[:, ip]
 
-    # MATLAB uses 1-based indexing in the loop. In MATLAB, the forward
-    # loop is: for iz = 1:(Nz-1). In Python, iz from 0 to Nz-2.
     for iz in range(Nz - 1):
         R1 = stepped_coords[iz, 1]
         R2 = stepped_coords[iz + 1, 1]
@@ -726,13 +699,11 @@ def pressure_distribution_axi(
             else:
                 U0 = F.T @ U0
 
-    # --- Add nearfield pressure ---
     if add_nearfield:
         data_nf = _rayleigh_radiated_pressure(data, field_points)
         pRad = np.reshape(data_nf, (resolution, Nfield), order="F")
         Pmatx[:, NP:] = pRad
 
-        # Overwrite the mouth boundary with internal solution
         ind = np.where(plotcoords_x[:, NP] <= stepped_coords[-1, 1])[0]
         coords_nf = plotcoords_x[ind, NP]
         phix_mouth = get_eigenfunctions_axi(

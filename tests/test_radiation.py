@@ -6,7 +6,7 @@ import numpy as np
 
 from mmm_toolbox.radiation import baffled_rad_zmatrix_axi
 
-DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
+DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def test_radiation_zmatrix(zrad_mat, init_mat):

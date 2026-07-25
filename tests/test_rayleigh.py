@@ -7,7 +7,7 @@ import numpy as np
 from mmm_toolbox.core import calculate_matrices, init_horn_data
 from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
-DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
+DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def test_rayleigh_matlab(prad_rayleigh_mat, init_mat, horncoords_mat):

@@ -7,7 +7,6 @@ from mmm_toolbox.plotting import get_di_axi
 from mmm_toolbox.radiation import (
     baffled_rad_zmatrix_axi,
     baffled_rad_zmatrix_direct_axi,
-    precompute_rad_zmatrix,
     radiated_pressure_axi,
 )
 
@@ -23,6 +22,5 @@ __all__ = [
     "make_fmat_axi",
     "make_km_axi",
     "make_steps",
-    "precompute_rad_zmatrix",
     "radiated_pressure_axi",
 ]
