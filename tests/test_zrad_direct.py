@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import numpy as np
-import scipy.io
 from scipy.special import j1 as besselj1
+from scipy.special import jn_zeros
 
 from mmm_toolbox.radiation import (
     _struve_h1,
@@ -12,13 +12,11 @@ from mmm_toolbox.radiation import (
     baffled_rad_zmatrix_direct_axi,
 )
 
-BZ_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def _load_bz():
-    d = scipy.io.loadmat(str(BZ_DIR / "MMM_besselzeros.mat"))
-    return d["bz"].flatten()
+    return np.concatenate([[0.0], jn_zeros(1, 199)])
 
 
 def test_direct_vs_analytical_fundamental():

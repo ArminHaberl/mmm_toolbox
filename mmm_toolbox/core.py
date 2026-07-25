@@ -6,15 +6,10 @@ MATLAB originals:
   - MMM_calculateMatrices -> calculate_matrices
 """
 
-from pathlib import Path
-
 import numpy as np
-from scipy.io import loadmat
 
-from mmm_toolbox.axi import make_fmat_axi
+from mmm_toolbox.axi import _get_bessel_zeros, make_fmat_axi
 from mmm_toolbox.geometry import make_steps
-
-_DATA_DIR = Path(__file__).parent / "data"
 
 
 def make_big_fmat(
@@ -45,7 +40,6 @@ def init_horn_data(
     geometry: str,
     rho: float = 1.205,
     c: float = 344.0,
-    bessel_zeros_path: str | None = None,
 ) -> dict:
     """Initialize the MMM data structure for a horn simulation.
 
@@ -56,9 +50,6 @@ def init_horn_data(
       n_integration_points, raw_coords, stepped_coords, mode_index,
       mode_info, S, Sm, St, big_f, Zrad
     """
-    if bessel_zeros_path is None:
-        bessel_zeros_path = str(_DATA_DIR / "MMM_besselzeros.mat")
-
     if coords.size == 0:
         raise ValueError("Error: no horn coordinates.")
     if np.any(np.diff(coords[:, 0]) < 0):
@@ -73,9 +64,8 @@ def init_horn_data(
     eigen_values: np.ndarray
 
     if "axi" in geometry:
-        bz_mat = loadmat(bessel_zeros_path)
-        bz = bz_mat["bz"].flatten()
-        eigen_values = bz[:n_modes]
+        bz = _get_bessel_zeros(n_modes)
+        eigen_values = bz
         S = np.pi * stepped_coords[:, 1] ** 2
     elif "rect" in geometry:
         S = stepped_coords[:, 1] * stepped_coords[:, 2] * 4.0

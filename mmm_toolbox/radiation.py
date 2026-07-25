@@ -15,9 +15,7 @@ from scipy.interpolate import CubicSpline
 from scipy.io import loadmat, savemat
 from scipy.special import j0, j1, roots_legendre
 
-from mmm_toolbox.axi import get_eigenfunctions_axi
-
-_DATA_DIR = Path(__file__).parent / "data"
+from mmm_toolbox.axi import _get_bessel_zeros, get_eigenfunctions_axi
 
 
 def _struve_h1(x: np.ndarray) -> np.ndarray:
@@ -225,8 +223,7 @@ def _build_lookup_table(
     max_modes: int, n_quad: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute the normalized (rho=1, c=1, S=1) lookup table from scratch."""
-    bz_mat = loadmat(str(_DATA_DIR / "MMM_besselzeros.mat"))
-    bz = bz_mat["bz"].flatten()
+    bz = _get_bessel_zeros(max_modes)
 
     kamax = bz[max_modes - 1] * 2.5
     kamin = 0.1
@@ -307,8 +304,7 @@ def baffled_rad_zmatrix_axi(
             f"precalculated ({available_modes})"
         )
 
-    bz_mat = loadmat(str(_DATA_DIR / "MMM_besselzeros.mat"))
-    bz = bz_mat["bz"].flatten()
+    bz = _get_bessel_zeros(max_modes)
 
     a = np.sqrt(S / np.pi)
     kain = k * a

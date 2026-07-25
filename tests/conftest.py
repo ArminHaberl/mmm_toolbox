@@ -5,16 +5,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 import scipy.io
+from scipy.special import jn_zeros
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
-DATA_DIR = Path(__file__).parent.parent / "mmm_toolbox" / "data"
 
 
 @pytest.fixture(scope="session")
 def bessel_zeros():
-    """Full array of Bessel J1 zeros from MMM_besselzeros.mat."""
-    d = scipy.io.loadmat(str(DATA_DIR / "MMM_besselzeros.mat"))
-    return d["bz"].flatten()
+    """Full array of Bessel J1 zeros (200 values + leading zero)."""
+    return np.concatenate([[0.0], jn_zeros(1, 199)])
 
 
 # ---------------------------------------------------------------------------

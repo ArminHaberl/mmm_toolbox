@@ -41,12 +41,6 @@ Dependencies: `numpy`, `scipy`, `matplotlib`, `pytest`.
 
 ### Data files
 
-One data file is bundled with the package:
-
-| File | Purpose |
-|------|---------|
-| `MMM_besselzeros.mat` | Zeros of Bessel function J₁ (axisymmetric eigenvalues) |
-
 The modal radiation impedance lookup table is **built automatically** on the
 first call to `baffled_rad_zmatrix_axi` and cached to disk at
 `~/.cache/mmm_toolbox/ZradAS{N}_q{n}.mat`.  This takes ~6 seconds for 32 modes

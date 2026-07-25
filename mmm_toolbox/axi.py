@@ -7,7 +7,17 @@ MATLAB originals:
 """
 
 import numpy as np
-from scipy.special import j0, j1
+from scipy.special import j0, j1, jn_zeros
+
+
+def _get_bessel_zeros(n: int) -> np.ndarray:
+    """Return the first *n* zeros of J₁, with a leading zero.
+
+    The leading zero corresponds to the fundamental plane-wave mode
+    (eigenvalue 0).  The remaining *n*‑1 values are the positive zeros
+    α₁, α₂, … used by the axisymmetric mode-matching formulation.
+    """
+    return np.concatenate([[0.0], jn_zeros(1, n - 1)])
 
 
 def make_fmat_axi(
