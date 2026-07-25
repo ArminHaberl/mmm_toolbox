@@ -80,7 +80,7 @@ def horn_coord_1d(
         N = 0
         horncoord = np.zeros((0, 2))
 
-    htype_lower = htype.lower()
+    htype_lower = htype.lower().replace("_", " ")
 
     if yth == abs(ym):
         horncoord[:, 0] = np.linspace(0, L, N)
@@ -226,7 +226,7 @@ def horn_coord_1d(
                     )
 
         elif htype_lower == "radius":
-            rad_fta = min(rad_fta, 90.0)
+            rad_fta = max(rad_fta, 90.0)
             r0 = yth - rad_r * (1.0 - np.cos(th_fta * np.pi / 180.0))
             z0 = -rad_r * np.sin(th_fta * np.pi / 180.0)
             zL = rad_r * np.sin(rad_fta * np.pi / 180.0)
