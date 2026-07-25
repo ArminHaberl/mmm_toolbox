@@ -96,7 +96,18 @@ below for key fields. For a complete runnable example, see
 | `baffled_rad_zmatrix_direct_axi(k, ρ, c, S, M, bz, ...)` | `MMM_ASbaffledradzmatrix` | Modal radiation impedance (fixed Gauss-Legendre quadrature) |
 | `pressure_distribution_axi(freq, data, ...)` | `MMM_ASpressureDistribution` | Spatial pressure field inside/near horn |
 | `radiated_pressure_axi(data, pts, ...)` | `MMM_ASradiatedPressure` | Radiated pressure (far-field or Rayleigh) |
-| `get_di_axi(data, angles)` | `MMM_ASgetDI` | Directivity index |
+
+### Plotting
+
+| Python function | MATLAB original | Description |
+|-----------------|----------------|-------------|
+| `plot_horn_profile(data, ax=None)` | `MMM_ASplotHorn` | Raw + stepped horn contour (axisymmetric) |
+| `plot_throat_impedance(data, ax=None)` | `MMM_PlotZth` | Normalised throat impedance vs frequency |
+| `plot_spl_vs_frequency(data, angles, step=10, ax=None)` | — | SPL vs frequency at selected angles |
+| `plot_polar_map(data, angles, ax=None)` | `MMM_ASpolarMap` | Normalised polar SPL contour map |
+| `plot_directivity_index(data, ax=None)` | — | Directivity index vs frequency |
+| `plot_sound_field(data, freq=None, ...)` | — | Internal / near-field SPL distribution |
+| `get_di_axi(data, angles)` | `MMM_ASgetDI` | Compute directivity index
 
 The central object is the `data` dictionary returned by `init_horn_data` and
 modified in-place by `calculate_matrices`, `radiated_pressure_axi`, and
@@ -144,10 +155,10 @@ pressure.
 - Near-field radiated pressure via Rayleigh integral
 - Internal and near-field pressure distribution (`pressure_distribution_axi`)
 - Directivity index (Beranek / Gerzon weighting)
+- Horn profile, throat impedance, SPL, polar map, and sound-field plots
 
 ### Not yet ported
 
-- MATLAB plotting utilities (`MMM_PlotZth`, `MMM_ASplotHorn`, `MMM_ASpolarMap`)
 - Rectangular horn geometry (referenced but never fully implemented in the
   original MMM Toolbox)
 

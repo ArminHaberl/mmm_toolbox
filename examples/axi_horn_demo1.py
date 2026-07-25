@@ -43,7 +43,14 @@ import numpy as np
 
 from mmm_toolbox.core import calculate_matrices, init_horn_data
 from mmm_toolbox.geometry import horn_coord_1d
-from mmm_toolbox.plotting import get_di_axi
+from mmm_toolbox.plotting import (
+    get_di_axi,
+    plot_directivity_index,
+    plot_horn_profile,
+    plot_polar_map,
+    plot_spl_vs_frequency,
+    plot_throat_impedance,
+)
 from mmm_toolbox.radiation import baffled_rad_zmatrix_axi, radiated_pressure_axi
 
 # -----------------------------------------------------------------------
@@ -121,85 +128,15 @@ data = radiated_pressure_axi(
 # -----------------------------------------------------------------------
 import matplotlib.pyplot as plt
 
-# -- Figure 1: Horn profile -------------------------------------------
-fig1, ax1 = plt.subplots(figsize=(8, 5))
-rc = data["raw_coords"]
-sc = data["stepped_coords"]
-ym = np.max(rc[:, 1])
+fig1, _ = plot_horn_profile(data)
+fig2, _ = plot_throat_impedance(data)
+fig3, _ = plot_spl_vs_frequency(data, Angext)
 
-ax1.plot(
-    sc[:, 0],
-    sc[:, 1],
-    "b",
-    sc[:, 0],
-    -sc[:, 1],
-    "b",
-    rc[:, 0],
-    rc[:, 1],
-    "k",
-    rc[:, 0],
-    -rc[:, 1],
-    "k",
-)
-ax1.set_ylim(-ym * 1.1, ym * 1.1)
-ax1.set_aspect("equal")
-ax1.set_xlabel("z axis [m]")
-ax1.set_ylabel("Radius [m]")
-ax1.set_title("Horn profile")
-fig1.tight_layout()
-
-# -- Figure 2: Normalised throat impedance ----------------------------
-fig2, ax2 = plt.subplots(figsize=(8, 5))
-Z00n = data["St"] / (data["rho"] * data["c"]) * data["Z00"]
-
-ax2.semilogx(data["fvec"], np.real(Z00n), "k", label="Real")
-ax2.semilogx(data["fvec"], np.imag(Z00n), "r", label="Imag")
-ax2.set_xlim(data["fvec"][0], data["fvec"][-1])
-ax2.set_xlabel("Hz")
-ax2.set_ylabel("Normalized acoustic Z")
-ax2.set_title("Horn throat impedance")
-ax2.legend()
-ax2.grid(True)
-fig2.tight_layout()
-
-# -- Figure 3: Field-point SPL vs frequency -----------------------
-fig3, ax3 = plt.subplots(figsize=(9, 6))
-ia = np.where(np.mod(Angext, 10) == 0)[0]
-SPL = 94.0 + 20.0 * np.log10(np.abs(data["pRad"]))
-for idx in ia:
-    ax3.semilogx(data["fvec"], SPL[idx, :], label=f"{Angext[idx]:.0f}°")
-ax3.set_xlim(data["fvec"][0], data["fvec"][-1])
-ax3.set_xlabel("Hz")
-ax3.set_ylabel("dB SPL")
-ax3.set_title("Field point pressures")
-ax3.legend(title="Angle", ncol=2, fontsize="small")
-ax3.grid(True)
-fig3.tight_layout()
-
-# -- Figure 4: Polar map + Directivity index --------------------------
 data = get_di_axi(data, Angext)
-Lp = 20.0 * np.log10(np.abs(data["pRad"]))
-Lp_norm = Lp - Lp[0, :]  # normalise to on-axis
 
 fig4 = plt.figure(figsize=(9, 9))
-
-ax4a = fig4.add_subplot(2, 1, 1)
-cf = ax4a.contourf(data["fvec"], Angext, Lp_norm, 15, cmap="viridis")
-ax4a.set_xscale("log")
-ax4a.set_xlim(data["fvec"][0], data["fvec"][-1])
-ax4a.set_xlabel("Hz")
-ax4a.set_ylabel("Degrees")
-ax4a.set_title("Polar map (normalized)")
-fig4.colorbar(cf, ax=ax4a, label="dB")
-
-ax4b = fig4.add_subplot(2, 1, 2)
-ax4b.semilogx(data["fvec"], data["DI"], "k")
-ax4b.set_xlim(data["fvec"][0], data["fvec"][-1])
-ax4b.set_xlabel("Hz")
-ax4b.set_ylabel("dB")
-ax4b.set_title("Directivity index")
-ax4b.grid(True)
-
+_, _ = plot_polar_map(data, Angext, ax=fig4.add_subplot(2, 1, 1))
+_, _ = plot_directivity_index(data, ax=fig4.add_subplot(2, 1, 2))
 fig4.tight_layout()
 
 out_dir = Path.cwd() / "figures"
