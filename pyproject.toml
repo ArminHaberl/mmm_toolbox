@@ -28,3 +28,8 @@ dev = [
     "ruff>=0.16.0",
     "ty>=0.0.63",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: slow test (table generation, integration)",
+]

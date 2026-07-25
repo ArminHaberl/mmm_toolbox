@@ -134,10 +134,10 @@ modified in-place by `calculate_matrices`, `radiated_pressure_axi`, and
 uv run pytest tests/ -v
 ```
 
-26 tests validate the entire axisymmetric pipeline against MATLAB reference
-outputs saved in `test_data/`. Tolerance: `atol=1e-12` for direct math, `1e-10`
-for interpolation, `atol=0.02` for pressure distribution, `1e-8` for far-field
-pressure.
+27 tests (26 fast + 1 slow) validate the entire axisymmetric pipeline against
+MATLAB reference outputs saved in `test_data/`. Tolerance: `atol=1e-12` for
+direct math, `1e-10` for interpolation, `atol=0.02` for pressure distribution,
+`1e-8` for far-field pressure. Skip the slow test with ``-m "not slow"``.
 
 ---
 
