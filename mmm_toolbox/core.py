@@ -104,11 +104,12 @@ def calculate_matrices(data: dict, progress_report: bool = False) -> dict:
 
     Corresponds to MMM_calculateMatrices.
 
+    All frequencies are processed simultaneously at each duct step
+    via batched linear algebra, avoiding per-frequency Python loops.
+
     Modifies and returns data dict with added keys: BigZ, Umat, Z00,
     UmouthPw, Umouth.
     """
-    from mmm_toolbox.axi import make_km_axi
-
     n_modes = data["n_modes"]
     nfreq = data["nfreq"]
     k_vec = data["k"]
@@ -122,67 +123,80 @@ def calculate_matrices(data: dict, progress_report: bool = False) -> dict:
     c_sound = data["c"]
     keep_zmatrix = data["keep_zmatrix"]
 
+    krc = k_vec * rho * c_sound                         # (nfreq,)
+    bz_M = mode_info[:n_modes]                           # (M,)
+    idx = np.arange(n_modes)                             # diagonal indices
+
+    Z = Zrad.copy()                                      # (M, M, nfreq)
+    U = np.tile(
+        np.eye(n_modes, dtype=complex)[:, :, np.newaxis], (1, 1, nfreq),
+    )                                                    # (M, M, nfreq)
+
     data["Umat"] = np.zeros((n_modes, n_modes, nfreq), dtype=complex)
 
     if keep_zmatrix:
         data["BigZ"] = np.zeros(
-            (n_modes, n_modes, n_steps, nfreq), dtype=complex
+            (n_modes, n_modes, n_steps, nfreq), dtype=complex,
         )
         data["BigZ"][:, :, -1, :] = Zrad
 
-    for ik in range(nfreq):
+    for iz in range(n_steps - 2, -1, -1):
         if progress_report:
-            pct = ik / nfreq * 100.0
-            print(
-                f"Calculating k = {k_vec[ik]:.4f} ({pct:.1f}%)"
+            pct = (n_steps - 2 - iz) / max(n_steps - 2, 1) * 100.0
+            print(f"Step {n_steps - 2 - iz}/{n_steps - 2} ({pct:.0f}%)")
+
+        L = stepped_coords[iz + 1, 0] - stepped_coords[iz, 0]
+
+        if L > 0.0:
+            R = stepped_coords[iz, 1]
+            gmR = bz_M[:, np.newaxis] / R               # (M, 1)
+            delta = k_vec[np.newaxis, :] ** 2 - gmR ** 2  # (M, nfreq)
+            kn = np.conj(np.sqrt(delta + 0j))            # (M, nfreq)
+
+            D2 = 1j * np.sin(L * kn)                     # (M, nfreq)
+            D3 = np.tan(L * kn)                           # (M, nfreq)
+            Zc = krc[np.newaxis, :] / (S[iz] * kn)       # (M, nfreq)
+
+            d3 = Zc / (1j * D3)                           # (M, nfreq)
+            d2 = Zc / D2                                  # (M, nfreq)
+
+            Z_aug = Z.copy()
+            Z_aug[idx, idx, :] += d3
+            Z_inv = np.moveaxis(
+                np.linalg.inv(np.moveaxis(Z_aug, -1, 0)), 0, -1,
             )
 
-        U = np.eye(n_modes, dtype=complex)
-        Z = Zrad[:, :, ik].copy()
+            Z_new = -d2[:, np.newaxis, :] * Z_inv * d2[np.newaxis, :, :]
+            Z_new[idx, idx, :] += d3
 
-        # Propagate backward from mouth to throat
-        for iz in range(n_steps - 2, -1, -1):
-            c1 = stepped_coords[iz, :]
-            stepped_coords[iz + 1, :]
-            L = stepped_coords[iz + 1, 0] - stepped_coords[iz, 0]
+            invZc = (S[iz] * kn) / krc[np.newaxis, :]     # (M, nfreq)
+            d2_inv = D2 * invZc                            # (M, nfreq)
+            e = np.exp(-1j * L * kn)                       # (M, nfreq)
 
-            if L > 0.0:
-                # Straight duct propagation (transmission line)
-                krc = k_vec[ik] * rho * c_sound
-                kn = make_km_axi(k_vec[ik], c1, n_modes, mode_info)
+            M_mat = -d2_inv[:, np.newaxis, :] * Z_new
+            M_mat[idx, idx, :] += d2_inv * Zc + e
 
-                D2 = 1j * np.sin(L * kn)
-                D3 = np.tan(L * kn)
-                Zc = krc / (S[iz] * kn)
+            U_batch = np.moveaxis(U, -1, 0)               # (nfreq, M, M)
+            M_batch = np.moveaxis(M_mat, -1, 0)           # (nfreq, M, M)
+            U = np.moveaxis(U_batch @ M_batch, 0, -1)     # (M, M, nfreq)
 
-                D2Zc = np.diag(Zc / D2)
-                iD3Zc = np.diag(Zc / (1j * D3))
+            Z = Z_new
 
-                Z = iD3Zc - D2Zc @ np.linalg.inv(Z + iD3Zc) @ D2Zc
+        else:
+            F = big_f[:, :, iz]
+            Ft = F.T
+            Z_batch = np.moveaxis(Z, -1, 0)               # (nfreq, M, M)
+            U_batch = np.moveaxis(U, -1, 0)               # (nfreq, M, M)
+            Z = np.moveaxis(F @ Z_batch @ Ft, 0, -1)      # (M, M, nfreq)
+            U = np.moveaxis(U_batch @ Ft, 0, -1)          # (M, M, nfreq)
 
-                invZc = (S[iz] * kn) / krc
-                E = np.diag(np.exp(-1j * L * kn))
-                U = U @ (-np.diag(D2 * invZc) @ (Z - np.diag(Zc)) + E)
+        if keep_zmatrix:
+            data["BigZ"][:, :, iz, :] = Z
 
-            else:
-                # Discontinuity propagation (F-matrix)
-                F = big_f[:, :, iz]
-                Ft = F.T
-                Z = F @ Z @ Ft
-                U = U @ Ft
+    data["Umat"] = U
 
-            if keep_zmatrix:
-                data["BigZ"][:, :, iz, ik] = Z
-
-        data["Umat"][:, :, ik] = U
-
-    # Throat impedance (fundamental mode)
     data["Z00"] = np.squeeze(data["BigZ"][0, 0, 0, :])
-
-    # Mouth volume velocity for throat plane wave excitation
     data["UmouthPw"] = np.squeeze(data["Umat"][:, 0, :])
-
-    # Multiplication by throat area for default unit-throat-velocity
     data["Umouth"] = data["UmouthPw"] * data["St"]
 
     return data
