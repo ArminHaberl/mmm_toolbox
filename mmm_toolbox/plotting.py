@@ -34,19 +34,17 @@ def get_di_axi(data: dict, angles: np.ndarray) -> dict:
         n = round(180.0 / dang)
         m = n // 2 + 1
 
-        wt = np.zeros(m)
-        for r in range(0, n + 1, 2):
-            k1 = 0.5 if (r == 0 or r == n) else 1.0
-            wt[0] = wt[0] + k1 * (-1.0 / (r**2 - 1.0))
-        wt[0] = wt[0] / n
+        r = np.arange(0, n + 1, 2)
+        k1 = np.where((r == 0) | (r == n), 0.5, 1.0)
+        term = k1 * (-1.0 / (r**2 - 1.0))
 
-        for i in range(1, m):
-            for r in range(0, n + 1, 2):
-                k1 = 0.5 if (r == 0 or r == n) else 1.0
-                wt[i] = wt[i] + k1 * (-1.0 / (r**2 - 1.0)) * np.cos(
-                    np.pi * r * i / n
-                )
-            wt[i] = 2.0 * wt[i] / n
+        wt = np.zeros(m)
+        wt[0] = np.sum(term) / n
+
+        if m > 1:
+            i_vals = np.arange(1, m)
+            cos_mat = np.cos(np.pi * np.outer(r, i_vals) / n)
+            wt[1:] = 2.0 / n * (term @ cos_mat)
 
         wt = wt[:, np.newaxis]  # (m, 1)
         Q = np.sum(wt * p_mag[:m, :] ** 2, axis=0)

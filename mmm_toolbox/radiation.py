@@ -58,6 +58,7 @@ def _compute_zmat_fixed_quad(
     Zmat = np.zeros((M, M, nfreq), dtype=complex)
 
     bz_div_kR_sq = (bz[:M, np.newaxis] / kR[np.newaxis, :]) ** 2
+    limit_value = np.sqrt(2.0) / 2.0 * kR[np.newaxis, :] * j0(bz[:M, np.newaxis])
 
     # ---- Resistance: phi in [0, pi/2] ----
     nodes, weights = roots_legendre(n_quad)
@@ -74,11 +75,7 @@ def _compute_zmat_fixed_quad(
         denom = bz_div_kR_sq - tau**2
         D = -np.sqrt(2.0) * tau * Jv[np.newaxis, :] / denom
 
-        small = np.abs(denom) < 1e-12
-        if np.any(small):
-            rows, cols = np.where(small)
-            for mi, ki in zip(rows, cols):
-                D[mi, ki] = np.sqrt(2.0) / 2.0 * kR[ki] * j0(bz[mi])
+        D = np.where(np.abs(denom) < 1e-12, limit_value, D)
 
         Zmat.real += w[idx] * sinphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
 
@@ -100,12 +97,7 @@ def _compute_zmat_fixed_quad(
         Jv = j1(tau * kR)
         denom = bz_div_kR_sq - tau**2
         D = -np.sqrt(2.0) * tau * Jv[np.newaxis, :] / denom
-
-        small = np.abs(denom) < 1e-12
-        if np.any(small):
-            rows, cols = np.where(small)
-            for mi, ki in zip(rows, cols):
-                D[mi, ki] = np.sqrt(2.0) / 2.0 * kR[ki] * j0(bz[mi])
+        D = np.where(np.abs(denom) < 1e-12, limit_value, D)
 
         Zmat.imag += w_x[idx] * coshphi * D[:, np.newaxis, :] * D[np.newaxis, :, :]
 
@@ -117,32 +109,37 @@ def _compute_zmat_fixed_quad(
 
     # ---- High-frequency asymptotic ---
     if use_hf_approx:
-        for m in range(M):
-            for n in range(m, M):
-                if m == 0 and n == 0:
-                    continue
-                mu_max = max(bz[m], bz[n])
-                hf_mask = kR >= mu_max * 2.5
-                if not hf_mask.any():
-                    continue
+        bz_M = bz[:M]
+        mu_max_ij = np.maximum(bz_M[:, np.newaxis], bz_M[np.newaxis, :])
+        hf_mask = kR[np.newaxis, np.newaxis, :] >= mu_max_ij[:, :, np.newaxis] * 2.5
+        hf_mask[0, 0, :] = False
 
-                if m == n:
-                    R_hf = (
-                        R00[hf_mask]
-                        * k[hf_mask]
-                        / np.sqrt(k[hf_mask] ** 2 - (mu_max / a) ** 2)
-                    )
-                else:
-                    R_hf = (R00[hf_mask] - 1.0) / (
-                        1.0 - (mu_max / kR[hf_mask]) ** 2
-                    )
-                X_hf = X00[hf_mask] / (1.0 - (mu_max / kR[hf_mask]) ** 2)
+        if np.any(hf_mask):
+            X_hf = X00[np.newaxis, np.newaxis, :] / (
+                1.0 - (mu_max_ij[:, :, np.newaxis] / kR[np.newaxis, np.newaxis, :]) ** 2
+            )
+            R_hf_off = (R00[np.newaxis, np.newaxis, :] - 1.0) / (
+                1.0 - (mu_max_ij[:, :, np.newaxis] / kR[np.newaxis, np.newaxis, :]) ** 2
+            )
 
-                Zmat.real[m, n, hf_mask] = R_hf
-                Zmat.imag[m, n, hf_mask] = X_hf
-                if m != n:
-                    Zmat.real[n, m, hf_mask] = R_hf
-                    Zmat.imag[n, m, hf_mask] = X_hf
+            diag = np.arange(M)
+            mu_diag = bz_M[diag]
+            hf_diag = hf_mask[diag, diag, :]
+            R_hf_diag = (
+                R00[np.newaxis, :]
+                * k[np.newaxis, :]
+                / np.sqrt(np.maximum(
+                    k[np.newaxis, :] ** 2 - (mu_diag[:, np.newaxis] / a) ** 2, 1e-300,
+                ))
+            )
+            X_hf_diag = X00[np.newaxis, :] / (
+                1.0 - (mu_diag[:, np.newaxis] / kR[np.newaxis, :]) ** 2
+            )
+
+            Zmat.real = np.where(hf_mask, R_hf_off, Zmat.real)
+            Zmat.imag = np.where(hf_mask, X_hf, Zmat.imag)
+            Zmat.real[diag, diag, :] = np.where(hf_diag, R_hf_diag, Zmat.real[diag, diag, :])
+            Zmat.imag[diag, diag, :] = np.where(hf_diag, X_hf_diag, Zmat.imag[diag, diag, :])
 
     return Zmat
 
@@ -325,69 +322,68 @@ def baffled_rad_zmatrix_axi(
     X00 = 2.0 * _struve_h1(2.0 * kain) / (2.0 * kain)
 
     nfreq = len(k)
-    ZmatOut = np.zeros((max_modes, max_modes, nfreq), dtype=complex)
+    ZmatOut_real = np.zeros((max_modes, max_modes, nfreq))
+    ZmatOut_imag = np.zeros((max_modes, max_modes, nfreq))
 
     ka_min = np.min(ka)
     ka_max = np.max(ka)
     intp_id = np.where((kain >= ka_min) & (kain <= ka_max))[0]
     pos_id = np.where(kain > ka_max)[0]
+    low_id = np.where(kain < 1.0)[0]
+    low_x_id = np.where(kain < ka[0])[0]
 
     minka = 1.0
     intp_id_r = np.where((kain >= minka) & (kain <= ka_max))[0]
 
     for m in range(max_modes):
-        for n in range(max_modes):
+        for n in range(m, max_modes):
             if m == 0 and n == 0:
-                Zmn = R00 + 1j * X00
-            elif m <= n:
-                bzq = max(bz[m], bz[n])
+                ZmatOut_real[0, 0, :] = R00
+                ZmatOut_imag[0, 0, :] = X00
+                continue
 
-                Y = np.real(Zmat[m, n, :])
-                zp = _get_poly_coeff(m + 1, n + 1, bz)
+            bzq = max(bz[m], bz[n])
 
-                low_id = np.where(kain < minka)[0]
-                R1 = np.polyval(zp, kain[low_id] ** 2)
+            zp = _get_poly_coeff(m + 1, n + 1, bz)
+            if len(low_id) > 0:
+                ZmatOut_real[m, n, low_id] = np.polyval(zp, kain[low_id] ** 2)
 
-                if len(intp_id_r) > 0:
-                    cs_r = CubicSpline(ka, Y)
-                    R2 = cs_r(kain[intp_id_r])
-                else:
-                    R2 = np.array([])
+            if len(intp_id_r) > 0:
+                Y_r = np.real(Zmat[m, n, :])
+                cs_r = CubicSpline(ka, Y_r)
+                ZmatOut_real[m, n, intp_id_r] = cs_r(kain[intp_id_r])
 
+            if len(pos_id) > 0:
                 if m == n:
-                    R3 = (
+                    ZmatOut_real[m, n, pos_id] = (
                         R00[pos_id]
                         * k[pos_id]
                         / np.sqrt(k[pos_id] ** 2 - (bz[m] / a) ** 2)
                     )
                 else:
-                    R3 = (R00[pos_id] - 1.0) / (
+                    ZmatOut_real[m, n, pos_id] = (R00[pos_id] - 1.0) / (
                         1.0 - (bzq / kain[pos_id]) ** 2
                     )
 
-                R = np.concatenate([R1, R2, R3])
+            Y0_r = np.real(Zmat[m, n, 0])
+            if len(low_x_id) > 0:
+                ZmatOut_imag[m, n, low_x_id] = Y0_r * kain[low_x_id] / ka[0]
 
-                Y = np.real(Zmat[m, n, :])
-
-                low_x_id = np.where(kain < ka[0])[0]
-                X1 = Y[0] * kain[low_x_id] / ka[0]
-
+            if len(intp_id) > 0:
                 Y_x = np.imag(Zmat[m, n, :])
-                if len(intp_id) > 0:
-                    cs_x = CubicSpline(ka, Y_x)
-                    X2 = cs_x(kain[intp_id])
-                else:
-                    X2 = np.array([])
+                cs_x = CubicSpline(ka, Y_x)
+                ZmatOut_imag[m, n, intp_id] = cs_x(kain[intp_id])
 
-                X3 = X00[pos_id] / (1.0 - (bzq / kain[pos_id]) ** 2)
+            if len(pos_id) > 0:
+                ZmatOut_imag[m, n, pos_id] = X00[pos_id] / (
+                    1.0 - (bzq / kain[pos_id]) ** 2
+                )
 
-                X = np.concatenate([X1, X2, X3])
-                Zmn = R + 1j * X
-            else:
-                Zmn = ZmatOut[n, m, :]
+            if m != n:
+                ZmatOut_real[n, m, :] = ZmatOut_real[m, n, :]
+                ZmatOut_imag[n, m, :] = ZmatOut_imag[m, n, :]
 
-            ZmatOut[m, n, :] = Zmn
-
+    ZmatOut = ZmatOut_real + 1j * ZmatOut_imag
     ZmatOut = rho * c / S * ZmatOut
     return ZmatOut
 
@@ -560,11 +556,10 @@ def _rayleigh_integral(
         r = np.sqrt(r[0, :] ** 2 + r[1, :] ** 2 + r[2, :] ** 2)
 
         vv = np.atleast_1d(vvel[ir])
-        rm = np.tile(r[:, np.newaxis], (1, nk))
         phiext = phiext + np.sum(
             vv.reshape(1, -1) * dS
             * np.exp(-1j * r[:, np.newaxis] * k[np.newaxis, :])
-            / rm,
+            / r[:, np.newaxis],
             axis=0,
         )
 
