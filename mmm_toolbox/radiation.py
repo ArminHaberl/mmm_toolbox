@@ -435,45 +435,42 @@ def radiated_pressure_axi(
 def _modal_radiated_pressure(
     data: dict, field_points: np.ndarray
 ) -> np.ndarray:
-    """Far-field modal radiated pressure calculation."""
+    """Far-field modal radiated pressure — all field points in one batch."""
     a = np.sqrt(data["Sm"] / np.pi)
-    nfreq = data["nfreq"]
     n_modes = data["n_modes"]
-    n_points = field_points.shape[0]
-    prext = np.zeros((n_points, nfreq), dtype=complex)
+    bz_M = data["eigen_values"][:n_modes]
+    k_vec = data["k"]
+    Umouth = data["Umouth"]
+    k = k_vec
 
-    for ii in range(n_points):
-        pe = field_points[ii, :]
-        R = np.linalg.norm(pe)
-        theta = np.arctan2(pe[0], pe[1])
-        s = data["k"] * a * np.sin(theta)
+    R = np.linalg.norm(field_points, axis=1)
+    theta = np.arctan2(field_points[:, 0], field_points[:, 1])
 
-        sm = s[np.newaxis, :]
-        bzm = data["eigen_values"][:n_modes, np.newaxis]
+    s = k[np.newaxis, :] * a * np.sin(theta[:, np.newaxis])
 
-        Theta2M = 2.0 * sm * j1(sm) / (sm**2 - bzm**2)
+    sm = s[:, np.newaxis, :]
+    bzm = bz_M[np.newaxis, :, np.newaxis]
+    Theta2M = 2.0 * sm * j1(sm) / (sm**2 - bzm**2)
 
-        if theta == 0.0:
-            Theta2M[0, :] = 1.0
+    zero_mask = theta == 0.0
+    if np.any(zero_mask):
+        Theta2M[zero_mask, 0, :] = 1.0
 
-        if n_modes > 1:
-            ModalSum = np.conj(
-                np.sum(1j * (Theta2M * data["Umouth"]), axis=0)
-            )
-        else:
-            ModalSum = 1j * Theta2M.flatten()
-
-        pf = (
-            data["rho"]
-            * data["c"]
-            / (2.0 * np.pi * R)
-            * np.exp(-1j * data["k"] * R)
-            * data["k"]
+    if n_modes > 1:
+        ModalSum = np.conj(
+            np.sum(1j * Theta2M * Umouth[np.newaxis, :, :], axis=1),
         )
+    else:
+        ModalSum = 1j * Theta2M[:, 0, :]
 
-        prext[ii, :] = pf * ModalSum
+    pf = (
+        data["rho"] * data["c"]
+        / (2.0 * np.pi * R[:, np.newaxis])
+        * np.exp(-1j * k[np.newaxis, :] * R[:, np.newaxis])
+        * k[np.newaxis, :]
+    )
 
-    return prext
+    return pf * ModalSum
 
 
 # ---------------------------------------------------------------------------
