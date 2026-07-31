@@ -7,10 +7,11 @@ import pytest
 import scipy.io
 from scipy.interpolate import CubicSpline
 from scipy.special import j1 as besselj1
-from scipy.special import jn_zeros
+from scipy.special import jn_zeros, roots_legendre
 
 from mmm_toolbox.radiation import (
     _build_lookup_table,
+    _compute_zmat_fixed_quad,
     _get_lookup_table,
     _struve_h1,
     baffled_rad_zmatrix_axi,
@@ -176,3 +177,69 @@ def test_cache_superset_reuse():
         "8-mode request should have reused the existing 24-mode "
         "cache instead of building a new table"
     )
+
+
+def test_singularity_correction_resistance():
+    """L'Hopital limit fires cleanly when denom -> 0 (resistance loop).
+
+    Constructs a quadrature node tau and sets kR so that
+    (bz[1] / kR)^2 == tau^2 *exactly*, guaranteeing ``abs(denom) < 1e-12``
+    inside the resistance quadrature.  Verifies the output is finite and
+    the Zmat is symmetric — the function would produce NaN/inf without the
+    vectorised singularity correction.
+    """
+    bz = np.concatenate([[0.0], jn_zeros(1, 199)])
+    n_quad = 50
+
+    nodes, _weights = roots_legendre(n_quad)
+    t = 0.5 * (nodes + 1.0) * (np.pi / 2.0)
+    tau = np.sin(t[n_quad // 2])
+    assert tau != 0.0
+
+    kR = np.array([bz[1] / tau])
+    k = kR.copy()
+    a = 1.0
+    M = 3
+
+    Zmat = _compute_zmat_fixed_quad(
+        k, kR, a, bz, M, use_hf_approx=False, n_quad=n_quad,
+    )
+
+    assert np.all(np.isfinite(Zmat)), "NaN or inf in Zmat"
+    for i in range(M):
+        for j in range(i + 1, M):
+            np.testing.assert_allclose(
+                Zmat[i, j, :], Zmat[j, i, :], atol=1e-10,
+            )
+
+
+def test_singularity_correction_reactance():
+    """L'Hopital limit fires cleanly when denom -> 0 (reactance loop).
+
+    Mirrors the resistance test but targets the reactance quadrature
+    where tau = cosh(t_x) >= 1, ensuring *both* vectorised
+    singular-value fallbacks are exercised.
+    """
+    bz = np.concatenate([[0.0], jn_zeros(1, 199)])
+    n_quad = 50
+
+    nodes_x, _weights_x = roots_legendre(n_quad)
+    t_x = 0.5 * (nodes_x + 1.0) * 10.0
+    tau = np.cosh(t_x[n_quad // 2])
+    assert tau > 1.0
+
+    kR = np.array([bz[1] / tau])
+    k = kR.copy()
+    a = 1.0
+    M = 3
+
+    Zmat = _compute_zmat_fixed_quad(
+        k, kR, a, bz, M, use_hf_approx=False, n_quad=n_quad,
+    )
+
+    assert np.all(np.isfinite(Zmat)), "NaN or inf in Zmat"
+    for i in range(M):
+        for j in range(i + 1, M):
+            np.testing.assert_allclose(
+                Zmat[i, j, :], Zmat[j, i, :], atol=1e-10,
+            )

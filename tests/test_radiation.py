@@ -50,3 +50,47 @@ def test_radiation_zmatrix_cached(init_mat):
     np.testing.assert_allclose(
         np.abs(result_cache), np.abs(result_baseline), rtol=0.02, atol=0.0,
     )
+
+
+def test_pos_id_extrapolation():
+    """Frequencies above the lookup-table ka range (kain > ka_max).
+
+    Exercises the ``pos_id`` branch where HF asymptotic formulas are used
+    for both resistance and reactance instead of spline interpolation.
+    """
+    S = 0.01
+    k = np.array([5000.0, 8000.0])
+    a = np.sqrt(S / np.pi)
+    kain = k * a
+    assert np.all(kain > 245.4), (
+        f"kain = {kain} must exceed ZradAS32 ka_max ≈ 245.4"
+    )
+
+    Zmat = baffled_rad_zmatrix_axi(
+        k, 1.2, 344.0, S, 3, filename=str(DATA_DIR / "ZradAS32.mat"),
+    )
+
+    assert Zmat.shape == (3, 3, 2)
+    assert np.all(np.isfinite(Zmat)), "NaN or inf in extrapolated Zmat"
+
+
+def test_low_x_id_extrapolation():
+    """Frequencies below the lookup-table ka range (kain < ka[0]).
+
+    Exercises the ``low_x_id`` branch where the imaginary part is
+    extrapolated linearly from (0, 0) through the first table point.
+    """
+    S = 0.01
+    k = np.array([0.05, 0.3])
+    a = np.sqrt(S / np.pi)
+    kain = k * a
+    assert np.all(kain < 0.1), (
+        f"kain = {kain} must be below ZradAS32 ka[0] = 0.1"
+    )
+
+    Zmat = baffled_rad_zmatrix_axi(
+        k, 1.2, 344.0, S, 3, filename=str(DATA_DIR / "ZradAS32.mat"),
+    )
+
+    assert Zmat.shape == (3, 3, 2)
+    assert np.all(np.isfinite(Zmat)), "NaN or inf in extrapolated Zmat"
